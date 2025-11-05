@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KKoin Tube Mini App</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Inter font -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+    <!-- Lucide Icons for social sharing -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-start justify-center p-4">
+
+    <!-- Hidden element used for AdBlock detection. Adblockers typically target elements with these class names and hide them. -->
+    <div id="ad-detection-test" style="width: 1px; height: 1px; visibility: hidden; pointer-events: none; opacity: 0;" class="ads adsbox ads-banner adblock"></div>
+
+    <!-- Main Application Container -->
+    <div id="app" class="w-full max-w-lg bg-white shadow-xl rounded-xl p-6 space-y-6">
+
+        <!-- Loading & Error Indicator -->
+        <div id="status-message" class="hidden p-3 text-sm rounded-lg" role="alert"></div>
+
+        <!-- Header and KKoin Balance -->
+        <header class="text-center space-y-1 border-b pb-4">
+            <h1 class="text-3xl font-extrabold text-blue-700">KKoin Tube</h1>
+            <p class="text-sm text-gray-500">Watch, Earn, Convert.</p>
+            <div class="pt-2">
+                <p class="text-gray-600 text-sm">Current Points:</p>
+                <p id="kkoin-balance" class="text-5xl font-black text-green-600">0</p>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="flex justify-between border-b pb-4">
+            <button data-page="dashboard" class="nav-btn font-semibold text-sm text-blue-700 border-b-2 border-blue-700 p-2 transition duration-150">Dashboard</button>
+            <button data-page="referral" class="nav-btn font-semibold text-sm text-gray-500 hover:text-blue-500 border-b-2 border-transparent p-2 transition duration-150">Referral</button>
+            <button data-page="wallet" class="nav-btn font-semibold text-sm text-gray-500 hover:text-blue-500 border-b-2 border-transparent p-2 transition duration-150">Wallet</button>
+        </nav>
+
+        <!-- --- DASHBOARD PAGE (Default View) --- -->
+        <section id="dashboard-page" class="page-content space-y-4">
+            <h2 class="text-xl font-bold text-gray-700">Earn Kkoin</h2>
+
+            <!-- Watch Ad Button & Ad Simulation Area -->
+            <div id="ad-watch-container" class="bg-blue-50 p-4 rounded-lg shadow-inner text-center space-y-3">
+                <p class="text-blue-700 font-semibold" id="ad-message">Click below to watch an ad.</p>
+                <button id="watch-ad-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md">
+                    Watch Video Ad (Earn Kkoin)
+                </button>
+                <p id="ad-cooldown" class="hidden text-sm text-red-500 font-medium"></p>
+                <!-- Optional Debug Display -->
+                <p id="ad-debug" class="text-xs text-gray-500 hidden mt-2">Points based on: <span id="debug-network"></span> in <span id="debug-location"></span></p>
+            </div>
+            
+            <!-- Ad Slots for Placement -->
+            <div class="space-y-4 pt-4 border-t border-gray-200">
+                <p class="text-sm font-semibold text-gray-600">Ad Placement Areas (Hidden from users):</p>
+                
+                <!-- ADSGRAM AD SLOT -->
+                <div id="adsgram-ad-slot" class="p-3 border-2 border-dashed border-gray-300 rounded-lg text-center text-xs text-gray-500 hidden">
+                    <!-- PASTE ADSGRAM AD CODE HERE -->
+                    AdsGram Ad Placement
+                </div>
+
+                <!-- MONETAG AD SLOT -->
+                <div id="monetag-ad-slot" class="p-3 border-2 border-dashed border-gray-300 rounded-lg text-center text-xs text-gray-500 hidden">
+                    <!-- PASTE MONETAG AD CODE HERE -->
+                    Monetag Ad Placement (Points via Postback)
+                </div>
+                
+                <!-- RICHADS AD SLOT (NEW) -->
+                <div id="richads-ad-slot" class="p-3 border-2 border-dashed border-gray-300 rounded-lg text-center text-xs text-gray-500 hidden">
+                    <!-- PASTE RICHADS AD CODE HERE -->
+                    RichAds Ad Placement
+                </div>
+
+                <p class="text-xs text-red-500 text-center">NOTE: Actual ad codes must be integrated and fire a success callback for points to be awarded.</p>
+            </div>
+
+
+        </section>
+
+        <!-- --- REFERRAL PAGE --- -->
+        <section id="referral-page" class="page-content space-y-4 hidden">
+            <h2 class="text-xl font-bold text-purple-700">Invite & Earn</h2>
+
+            <div class="bg-purple-50 p-4 rounded-lg space-y-3 shadow">
+                <!-- Referral Stats -->
+                <div class="flex justify-around text-center border-b pb-3 mb-3">
+                    <div>
+                        <p id="referral-count-display" class="text-3xl font-black text-purple-600">0</p>
+                        <p class="text-sm text-purple-700">Users Referred</p>
+                    </div>
+                    <div>
+                        <p id="referral-earnings-display" class="text-3xl font-black text-green-600">0</p>
+                        <p class="text-sm text-purple-700">Kkoin Earned</p>
+                    </div>
+                </div>
+
+                <!-- UPDATED POINT VALUE -->
+                <p class="text-sm text-purple-800 font-semibold">Share your unique code to earn <span class="font-bold">250 Kkoin</span> per successful sign-up!</p>
+                
+                <!-- Referral Link Box -->
+                <div class="flex items-center space-x-2">
+                    <input type="text" id="referral-link" readonly class="flex-grow p-2 text-sm bg-white border border-purple-300 rounded-lg font-mono truncate" value="Loading...">
+                    <button id="copy-referral-btn" class="bg-purple-600 hover:bg-purple-700 text-white p-2 rounded-lg text-sm transition duration-150 flex items-center">
+                        <i data-lucide="copy" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Social Sharing Buttons -->
+                <div class="pt-3 border-t">
+                    <p class="text-sm font-medium text-purple-700 mb-2">Share on Social Media:</p>
+                    <div class="grid grid-cols-3 gap-3">
+                        <button data-platform="telegram" class="social-share-btn bg-blue-500 hover:bg-blue-600 text-white p-3 rounded-lg text-xs font-bold transition duration-150 flex items-center justify-center space-x-1">
+                            <i data-lucide="send" class="w-4 h-4"></i><span>Telegram</span>
+                        </button>
+                        <button data-platform="whatsapp" class="social-share-btn bg-green-500 hover:bg-green-600 text-white p-3 rounded-lg text-xs font-bold transition duration-150 flex items-center justify-center space-x-1">
+                            <i data-lucide="message-square" class="w-4 h-4"></i><span>WhatsApp</span>
+                        </button>
+                        <button data-platform="x" class="social-share-btn bg-black hover:bg-gray-800 text-white p-3 rounded-lg text-xs font-bold transition duration-150 flex items-center justify-center space-x-1">
+                            <i data-lucide="twitter" class="w-4 h-4"></i><span>X</span>
+                        </button>
+                        <!-- NEW THREADS BUTTON -->
+                        <button data-platform="threads" class="social-share-btn bg-black hover:bg-gray-800 text-white p-3 rounded-lg text-xs font-bold transition duration-150 flex items-center justify-center space-x-1">
+                            <i data-lucide="message-circle" class="w-4 h-4"></i><span>Threads</span>
+                        </button>
+                        <button data-platform="facebook" class="social-share-btn bg-blue-700 hover:bg-blue-800 text-white p-3 rounded-lg text-xs font-bold transition duration-150 flex items-center justify-center space-x-1">
+                            <i data-lucide="facebook" class="w-4 h-4"></i><span>Facebook</span>
+                        </button>
+                        <button data-platform="reddit" class="social-share-btn bg-orange-500 hover:bg-orange-600 text-white p-3 rounded-lg text-xs font-bold transition duration-150 flex items-center justify-center space-x-1">
+                            <i data-lucide="bookmark" class="w-4 h-4"></i><span>Reddit</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <p id="referrer-info" class="text-xs text-purple-600 hidden text-center">You were referred by: <span id="referrer-id-display"></span></p>
+
+        </section>
+
+        <!-- --- WALLET PAGE (Updated) --- -->
+        <section id="wallet-page" class="page-content space-y-4 hidden">
+            <h2 class="text-xl font-bold text-green-700">Wallet & Withdrawal</h2>
+
+            <!-- Conversion Info -->
+            <div class="bg-green-50 p-4 rounded-lg space-y-2 shadow-inner">
+                <p class="text-sm font-medium text-green-800">Your Equivalent Value:</p>
+                <p id="usdt-equivalent" class="text-3xl font-black text-green-600">$0.00 USDT</p>
+                <p class="text-xs text-green-700">Conversion Rate: 10,000 Kkoin $\approx$ 1 USDT</p>
+                <p class="text-xs text-red-500 font-semibold">Minimum Withdrawal: 10 USDT (100,000 Kkoin)</p>
+            </div>
+            
+            <!-- NEW: Wallet Address Input Box -->
+            <div class="space-y-1 bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                <label for="usdt-trc20-page" class="block text-sm font-medium text-gray-700">Your TRC20 Wallet Address (USDT)</label>
+                <input type="text" id="usdt-trc20-page" placeholder="Enter or update your TRC20 address" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
+                <p id="wallet-address-status" class="text-xs text-gray-500">Address is required for withdrawal and will be saved.</p>
+            </div>
+
+            <!-- Withdrawal Action -->
+            <div class="pt-4 border-t space-y-4">
+                <button id="open-withdrawal-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md disabled:opacity-50" disabled>
+                    Withdraw Earnings <!-- Updated text -->
+                </button>
+
+                <!-- Create Wallet CTA (Updated text) -->
+                <div class="bg-yellow-100 p-3 rounded-lg text-center space-y-2">
+                    <p class="text-sm font-medium text-yellow-800">Don't have a crypto wallet?</p>
+                    <a href="https://t.me/CoinvetoBot?start=3AC81229" target="_blank" class="inline-flex items-center justify-center w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md">
+                        Create Crypto Wallet <!-- Updated text -->
+                    </a>
+                </div>
+            </div>
+        </section>
+        
+        <p class="text-xs text-gray-400 text-center pt-2 border-t">Your User ID: <span id="user-id-display">Loading...</span></p>
+
+    </div>
+
+    <!-- Modals (Updated) -->
+
+    <!-- Withdrawal Modal (Hidden by default) -->
+    <div id="withdrawal-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Confirm Withdrawal</h3>
+            <form id="withdrawal-form" class="space-y-4">
+                <p class="text-sm text-gray-700">You are about to withdraw <span class="font-bold text-green-600">10 USDT</span> by converting <span class="font-bold text-green-600">100,000 Kkoin</span>.</p>
+                
+                <div class="space-y-1 bg-gray-50 p-3 rounded-lg border">
+                    <p class="block text-sm font-medium text-gray-700">Target TRC20 Address:</p>
+                    <p id="modal-target-wallet" class="font-mono text-xs text-gray-900 break-all">Loading...</p>
+                    <p id="wallet-error" class="text-xs text-red-500 hidden">Invalid data or insufficient points.</p>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-2">
+                    <button type="button" id="close-withdrawal-modal" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">Cancel</button>
+                    <button type="submit" id="submit-withdrawal-btn" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50">Confirm and Withdraw</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Ad Watching Modal (Hidden by default) -->
+    <div id="ad-modal" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl text-center space-y-4">
+            <h3 class="text-2xl font-bold text-gray-800" id="ad-modal-title">Watching Ad...</h3>
+            <div class="w-full h-40 bg-gray-300 flex items-center justify-center rounded-lg shadow-inner">
+                <!-- This would be an iFrame or video player in a real app -->
+                <p id="ad-content" class="text-gray-500 text-sm">Ad from Network <span id="current-ad-network">A</span></p>
+            </div>
+            <p id="ad-countdown-text" class="text-xl font-mono text-red-600">Time remaining: 10s</p>
+            <button id="close-ad-modal-btn" class="px-6 py-2 text-sm font-medium text-white bg-gray-500 rounded-lg hover:bg-gray-600 disabled:opacity-50" disabled>
+                Close (Wait for Ad to Finish)
+            </button>
+        </div>
+    </div>
+
+    <!-- Firebase Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, query, where, addDoc, getDocs, runTransaction, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Set Firebase Log Level for debugging
+        setLogLevel('debug');
+
+        // --- GLOBAL CONFIG & INITIALIZATION ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-kkoin-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app, db, auth, userId = null;
+        let userData = {
+            kkoinPoints: 0,
+            walletAddress: '',
+            referrerId: null, // Who referred this user
+            lastAdWatch: 0,
+            totalReferrals: 0, // Will be calculated by listener
+            totalReferralEarnings: 0, // Will be calculated by listener
+            totalAdsWatched: 0,
+            hasReceivedInitialBonus: false
+        };
+        let currentPage = 'dashboard';
+
+        const MIN_CONVERSION_POINTS = 100000; // 10 USDT minimum (10,000 Kkoin = $1 USDT)
+        const USD_PER_KKOIN_RATIO = 1 / 10000; // 0.0001 USD per Kkoin
+        const REFERRAL_BONUS_POINTS = 250; 
+        const REFERRAL_INITIAL_BONUS_POINTS = Math.floor(REFERRAL_BONUS_POINTS / 2); 
+        const AD_WATCH_COOLDOWN_MS = 30000; // 30 seconds cooldown between ad watches
+        const AD_WATCH_DURATION_MS = 10000; // 10 seconds ad watching time
+        const SOCIAL_SHARE_MESSAGE = "🚀 Earn crypto effortlessly with KKoin Tube! Watch short videos, earn Kkoin, and withdraw to USDT. Join me now using my unique link and get a bonus start! Don't miss out:";
+
+        // --- PROFIT LOGIC CONSTANTS ---
+        const TARGET_PROFIT_MARGIN = 0.55; // 55% margin required on every ad view
+        const MIN_POINTS_PER_AD = 50; // Minimum points awarded to keep users engaged
+
+        const AD_NETWORK_CONFIGS = [
+            // Updated to include RichAds (Direct Credit) and maintain Monetag (Postback)
+            { name: 'Adsgram.ai', base_cpm: 3.00, id: 'A', postback: false },     // Instant Credit (Simulated)
+            { name: 'Monetag', base_cpm: 1.50, id: 'B', postback: true },         // Delayed Credit via Postback
+            { name: 'RichAds', base_cpm: 4.00, id: 'C', postback: false }         // Instant Credit (Simulated High-Tier)
+        ];
+
+        const LOCATION_TIERS = [
+            { id: 1, name: 'Tier 1 (High CPM)', multiplier: 1.5 }, // e.g., US, UK, AU
+            { id: 2, name: 'Tier 2 (Medium CPM)', multiplier: 1.0 }, // e.g., Brazil, India
+            { id: 3, name: 'Tier 3 (Low CPM)', multiplier: 0.7 }    // e.g., Rest of World
+        ];
+
+        // --- DOM Elements ---
+        const statusMessageEl = document.getElementById('status-message');
+        const balanceEl = document.getElementById('kkoin-balance');
+        const navBtns = document.querySelectorAll('.nav-btn');
+        const pageContents = document.querySelectorAll('.page-content');
+        
+        // Dashboard
+        const watchAdBtn = document.getElementById('watch-ad-btn');
+        const adCooldownEl = document.getElementById('ad-cooldown');
+        const adMessageEl = document.getElementById('ad-message');
+        const adDebugEl = document.getElementById('ad-debug');
+        const debugNetworkEl = document.getElementById('debug-network');
+        const debugLocationEl = document.getElementById('debug-location');
+        const adDetectionTestEl = document.getElementById('ad-detection-test'); 
+        
+        // Referral Page
+        const referralLinkEl = document.getElementById('referral-link');
+        const copyReferralBtn = document.getElementById('copy-referral-btn');
+        const referralCountDisplayEl = document.getElementById('referral-count-display');
+        const referralEarningsDisplayEl = document.getElementById('referral-earnings-display');
+        const socialShareBtns = document.querySelectorAll('.social-share-btn');
+        const referrerInfoEl = document.getElementById('referrer-info');
+        const referrerIdDisplayEl = document.getElementById('referrer-id-display');
+        
+        // Wallet Page
+        const usdtEquivalentEl = document.getElementById('usdt-equivalent');
+        const openWithdrawalBtn = document.getElementById('open-withdrawal-btn');
+        const usdtTrc20PageInput = document.getElementById('usdt-trc20-page'); 
+        const walletAddressStatusEl = document.getElementById('wallet-address-status'); 
+        
+        // Modals
+        const userIdDisplayEl = document.getElementById('user-id-display');
+        const withdrawalModal = document.getElementById('withdrawal-modal');
+        const closeWithdrawalModalBtn = document.getElementById('close-withdrawal-modal');
+        const withdrawalForm = document.getElementById('withdrawal-form');
+        const walletErrorEl = document.getElementById('wallet-error');
+        const submitWithdrawalBtn = document.getElementById('submit-withdrawal-btn');
+        const adModal = document.getElementById('ad-modal');
+        const adCountdownTextEl = document.getElementById('ad-countdown-text');
+        const currentAdNetworkEl = document.getElementById('current-ad-network');
+        const modalTargetWalletEl = document.getElementById('modal-target-wallet'); 
+
+        // --- FIREBASE PATHS ---
+        const getUserDocRef = (uid) => doc(db, 'artifacts', appId, 'users', uid, 'kkoin_data', 'profile');
+        const getReferralEventsRef = () => collection(db, 'artifacts', appId, 'public', 'data', 'referral_events');
+
+        // --- UTILITY FUNCTIONS ---
+
+        function showStatus(message, type = 'info') {
+            statusMessageEl.textContent = message;
+            statusMessageEl.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800', 'bg-blue-100', 'text-blue-800');
+
+            switch(type) {
+                case 'error':
+                    statusMessageEl.classList.add('bg-red-100', 'text-red-800');
+                    break;
+                case 'success':
+                    statusMessageEl.classList.add('bg-green-100', 'text-green-800');
+                    break;
+                case 'info':
+                default:
+                    statusMessageEl.classList.add('bg-blue-100', 'text-blue-800');
+                    break;
+            }
+            // Keep error messages visible longer for adblocker feedback
+            const duration = type === 'error' ? 10000 : 5000;
+            setTimeout(() => statusMessageEl.classList.add('hidden'), duration);
+        }
+
+        // --- AD BLOCKER LOGIC ---
+        function isAdBlockerActive() {
+            // Check if the detection element is blocked (usually by having its display/visibility manipulated by the adblocker)
+            const isHidden = adDetectionTestEl.offsetParent === null || adDetectionTestEl.offsetHeight === 0 || adDetectionTestEl.offsetWidth === 0;
+            
+            // Second check: check computed style (more reliable for AdBlock)
+            if (!isHidden) {
+                try {
+                    const style = window.getComputedStyle(adDetectionTestEl);
+                    // AdBlockers often set display: none or visibility: hidden on these classes
+                    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+                        return true;
+                    }
+                } catch (e) {
+                    // Fallback for strict environments
+                }
+            }
+            return isHidden;
+        }
+
+        // --- NAVIGATION/ROUTING ---
+        function navigateTo(pageId) {
+            currentPage = pageId;
+            pageContents.forEach(page => {
+                page.classList.add('hidden');
+                if (page.id === `${pageId}-page`) {
+                    page.classList.remove('hidden');
+                }
+            });
+
+            navBtns.forEach(btn => {
+                btn.classList.remove('text-blue-700', 'border-blue-700');
+                btn.classList.add('text-gray-500', 'border-transparent', 'hover:text-blue-500');
+                if (btn.getAttribute('data-page') === pageId) {
+                    btn.classList.add('text-blue-700', 'border-blue-700');
+                    btn.classList.remove('text-gray-500', 'border-transparent');
+                }
+            });
+            // Re-render icons after switching pages
+            lucide.createIcons();
+        }
+
+        // --- FIREBASE SETUP & AUTHENTICATION ---
+
+        async function initFirebase() {
+            try {
+                if (Object.keys(firebaseConfig).length === 0) {
+                    showStatus("Firebase configuration missing. Running in simulated mode.", 'error');
+                    return;
+                }
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userIdDisplayEl.textContent = userId;
+                        referralLinkEl.value = `${window.location.origin}${window.location.pathname}?startapp=${userId}`;
+                        setupUserListener(userId);
+                        checkInitialReferral(userId);
+                        lucide.createIcons(); // Initialize icons after content load
+                    } else {
+                        // Sign in anonymously if no token is available or user is signed out
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error("Firebase initialization or authentication failed:", error);
+                showStatus(`Authentication Error: ${error.message}`, 'error');
+            }
+        }
+
+        // --- CORE DATA LISTENER ---
+
+        function setupUserListener(uid) {
+            const userDocRef = getUserDocRef(uid);
+
+            // 1. Listen to the user's profile data
+            onSnapshot(userDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    userData = { ...userData, ...docSnap.data() };
+                    // Initialize the input with saved address
+                    usdtTrc20PageInput.value = userData.walletAddress || '';
+                    updateDashboard();
+                } else {
+                    // Initialize new user document with defaults
+                    setDoc(userDocRef, {
+                        kkoinPoints: 0,
+                        walletAddress: '',
+                        referrerId: userData.referrerId,
+                        lastAdWatch: 0,
+                        totalAdsWatched: 0,
+                        hasReceivedInitialBonus: false
+                    }).then(() => {
+                        console.log("New user profile created.");
+                        updateDashboard();
+                    }).catch(err => {
+                        console.error("Error creating user profile:", err);
+                        showStatus("Failed to create user profile data.", 'error');
+                    });
+                }
+            }, (error) => {
+                console.error("Error listening to user data:", error);
+                showStatus("Error fetching real-time data.", 'error');
+            });
+            
+            // 2. Listen to public referral events to calculate count and earnings
+            setupReferralCountListener(uid);
+        }
+
+        function setupReferralCountListener(uid) {
+            const q = query(getReferralEventsRef(), where("referrerId", "==", uid));
+            onSnapshot(q, (snapshot) => {
+                userData.totalReferrals = snapshot.docs.length;
+                userData.totalReferralEarnings = snapshot.docs.length * REFERRAL_BONUS_POINTS;
+
+                referralCountDisplayEl.textContent = userData.totalReferrals.toLocaleString();
+                referralEarningsDisplayEl.textContent = userData.totalReferralEarnings.toLocaleString();
+            }, (error) => {
+                console.error("Error listening to referral events:", error);
+            });
+        }
+        
+        // --- REFERRAL LOGIC ---
+        
+        function getUrlReferrerId() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const startappParam = urlParams.get('startapp');
+            if (startappParam && startappParam !== userId) {
+                return startappParam;
+            }
+            return null;
+        }
+        
+        async function checkInitialReferral(uid) {
+            const urlReferrerId = getUrlReferrerId();
+            
+            if (urlReferrerId && !userData.referrerId) {
+                await updateDoc(getUserDocRef(uid), { referrerId: urlReferrerId })
+                    .catch(err => console.error("Could not set new user's referrerId:", err));
+                await logReferralEvent(urlReferrerId, uid);
+                
+            } else if (userData.referrerId) {
+                // If referrer is already set, just display the info
+                referrerInfoEl.classList.remove('hidden');
+                referrerIdDisplayEl.textContent = userData.referrerId;
+            }
+        }
+        
+        async function logReferralEvent(referrerId, referredId) {
+            if (referrerId === referredId) return;
+
+            try {
+                const q = query(getReferralEventsRef(), 
+                    where("referredId", "==", referredId)
+                );
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    // 1. Create public referral event document
+                    await addDoc(getReferralEventsRef(), {
+                        referrerId: referrerId,
+                        referredId: referredId,
+                        timestamp: serverTimestamp(),
+                        bonusPoints: REFERRAL_BONUS_POINTS,
+                        status: 'claimed'
+                    });
+
+                    // 2. Grant bonus to the referrer (transaction for safety)
+                    const referrerDocRef = getUserDocRef(referrerId);
+                    await runTransaction(db, async (transaction) => {
+                        const referrerDoc = await transaction.get(referrerDocRef);
+                        if (referrerDoc.exists()) {
+                            const newPoints = referrerDoc.data().kkoinPoints + REFERRAL_BONUS_POINTS;
+                            transaction.update(referrerDocRef, { kkoinPoints: newPoints });
+                        }
+                    });
+                    
+                    // 3. Grant initial bonus to the referred user (once)
+                    if (!userData.hasReceivedInitialBonus) {
+                         const referredDocRef = getUserDocRef(referredId);
+                         await updateDoc(referredDocRef, { 
+                            kkoinPoints: userData.kkoinPoints + REFERRAL_INITIAL_BONUS_POINTS,
+                            hasReceivedInitialBonus: true
+                         });
+                    }
+
+                    showStatus(`Referral successful! You and user ${referrerId} received a bonus.`, 'success');
+                    // Force display of referrer info immediately
+                    userData.referrerId = referrerId; 
+                    referrerInfoEl.classList.remove('hidden');
+                    referrerIdDisplayEl.textContent = userData.referrerId;
+
+                }
+            } catch (error) {
+                console.error("Error processing referral event:", error);
+                showStatus("Failed to process referral bonus. Please try again.", 'error');
+            }
+        }
+        
+        // --- DASHBOARD/PAGE UPDATES ---
+
+        function updateDashboard() {
+            balanceEl.textContent = userData.kkoinPoints.toLocaleString();
+            
+            const usdtValue = (userData.kkoinPoints * USD_PER_KKOIN_RATIO).toFixed(2);
+            usdtEquivalentEl.textContent = `$${usdtValue} USDT`;
+            
+            const isReadyForWithdrawal = userData.kkoinPoints >= MIN_CONVERSION_POINTS;
+            
+            // Check if address is valid on page load/update
+            const walletIsValid = /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(userData.walletAddress);
+
+            // Button is disabled if points are too low OR if wallet address is invalid/missing
+            openWithdrawalBtn.disabled = !isReadyForWithdrawal || !walletIsValid;
+            openWithdrawalBtn.textContent = isReadyForWithdrawal ? "Withdraw Earnings" : `Need ${(MIN_CONVERSION_POINTS / 10000).toFixed(0)} USDT Minimum`;
+
+            // Update status text
+            if (userData.walletAddress && walletIsValid) {
+                walletAddressStatusEl.textContent = "Address is saved and ready for withdrawal.";
+                walletAddressStatusEl.classList.remove('text-red-500', 'text-gray-500');
+                walletAddressStatusEl.classList.add('text-green-600');
+            } else if (userData.walletAddress && !walletIsValid) {
+                 walletAddressStatusEl.textContent = "Saved address looks invalid. Please correct it.";
+                walletAddressStatusEl.classList.remove('text-green-600', 'text-gray-500');
+                walletAddressStatusEl.classList.add('text-red-500');
+            } else {
+                 walletAddressStatusEl.textContent = "Address is required for withdrawal and will be saved.";
+                 walletAddressStatusEl.classList.remove('text-green-600', 'text-red-500');
+                 walletAddressStatusEl.classList.add('text-gray-500');
+            }
+
+
+            if (userData.referrerId) {
+                referrerInfoEl.classList.remove('hidden');
+                referrerIdDisplayEl.textContent = userData.referrerId;
+            }
+            
+            updateAdButtonState();
+        }
+
+        function updateAdButtonState() {
+            const now = Date.now();
+            const timeSinceLastWatch = now - userData.lastAdWatch;
+
+            if (timeSinceLastWatch < AD_WATCH_COOLDOWN_MS) {
+                watchAdBtn.disabled = true;
+                adMessageEl.textContent = "Ad Cooldown Active";
+                adCooldownEl.classList.remove('hidden');
+                
+                const remainingTime = Math.ceil((AD_WATCH_COOLDOWN_MS - timeSinceLastWatch) / 1000);
+                adCooldownEl.textContent = `Next ad in: ${remainingTime}s`;
+
+                const timeout = setTimeout(() => {
+                    watchAdBtn.disabled = false;
+                    adMessageEl.textContent = "Click below to watch an ad.";
+                    adCooldownEl.classList.add('hidden');
+                }, AD_WATCH_COOLDOWN_MS - timeSinceLastWatch);
+
+                if (window.adTimeout) clearTimeout(window.adTimeout);
+                window.adTimeout = timeout;
+            } else {
+                watchAdBtn.disabled = false;
+                adMessageEl.textContent = "Click below to watch an ad.";
+                adCooldownEl.classList.add('hidden');
+            }
+        }
+
+        // --- AD WATCHING & PROFIT LOGIC ---
+
+        function simulateUserLocation() {
+            // Simulates user location tier based on random probability (Tier 1 is rarest/most valuable)
+            const rand = Math.random();
+            if (rand < 0.25) return LOCATION_TIERS[0]; // 25% Tier 1 (Highest value)
+            if (rand < 0.65) return LOCATION_TIERS[1]; // 40% Tier 2 (Standard value)
+            return LOCATION_TIERS[2]; // 35% Tier 3 (Lowest value)
+        }
+        
+        function calculateAdPoints(networkConfig) {
+            // 1. Determine User Value (Simulated Location)
+            const userLocation = simulateUserLocation();
+
+            // 2. Calculate Effective CPM based on Network and Location
+            const effectiveCPM = networkConfig.base_cpm * userLocation.multiplier;
+
+            // 3. Calculate Gross Revenue per 1 Ad Impression
+            const revenuePerAd = effectiveCPM / 1000;
+
+            // 4. Calculate Maximum Cost (User Reward) based on fixed Target Profit Margin
+            const maxUserRewardCost = revenuePerAd * (1 - TARGET_PROFIT_MARGIN);
+
+            // 5. Convert Cost into Kkoin Points (1 Kkoin = $0.0001)
+            let calculatedPoints = maxUserRewardCost / USD_PER_KKOIN_RATIO;
+            
+            // 6. Apply smoothing/minimums
+            let finalPoints = Math.floor(calculatedPoints);
+            
+            // Ensure the reward is never below a minimum threshold for engagement
+            finalPoints = Math.max(finalPoints, MIN_POINTS_PER_AD);
+
+            // Add a small random bonus/penalty (±10 points) for variety
+            finalPoints += Math.floor(Math.random() * 21) - 10;
+            
+            // Ensure final points is not negative
+            finalPoints = Math.max(finalPoints, MIN_POINTS_PER_AD); 
+
+            return { 
+                points: finalPoints, 
+                network: networkConfig.name, 
+                locationTier: userLocation.name,
+                effectiveCPM: effectiveCPM.toFixed(2),
+                profitMargin: TARGET_PROFIT_MARGIN,
+                isPostback: networkConfig.postback // Pass postback flag
+            };
+        }
+
+        function startAdWatchSimulation() {
+            if (watchAdBtn.disabled) return;
+            
+            // --- AdBlocker Check ---
+            if (isAdBlockerActive()) {
+                showStatus("AdBlocker detected! Please kindly disable your ad-blocking software and refresh the page to continue earning Kkoin.", 'error');
+                adMessageEl.textContent = "AdBlocker Detected. Please Disable.";
+                return; 
+            }
+            // --- End AdBlocker Check ---
+
+            // Rotate through the configured ad networks (0, 1, 2, 0, 1, 2, ...)
+            const selectedNetworkConfig = AD_NETWORK_CONFIGS[userData.totalAdsWatched % AD_NETWORK_CONFIGS.length];
+            const adResult = calculateAdPoints(selectedNetworkConfig);
+            
+            adModal.classList.remove('hidden');
+            adModal.classList.add('flex');
+            
+            let remaining = AD_WATCH_DURATION_MS / 1000;
+            adCountdownTextEl.textContent = `Time remaining: ${remaining}s`;
+            currentAdNetworkEl.textContent = adResult.network;
+
+            // --- Ad Network Integration Note ---
+            // In a real application, you would initialize the ad network SDK here.
+            // The simulation countdown below MUST be replaced by the ad network's 'ad playback complete' callback.
+            // If the ad network fails to load/play, the 'finishAdWatch' call must be skipped (or a failure logged).
+            // This is the step that ensures: if ads does not play, no point is given.
+
+            const countdownInterval = setInterval(() => {
+                remaining--;
+                adCountdownTextEl.textContent = `Time remaining: ${remaining}s`;
+                if (remaining <= 0) {
+                    clearInterval(countdownInterval);
+                    finishAdWatch(adResult);
+                }
+            }, 1000);
+        }
+
+        async function finishAdWatch(adResult) {
+            const pointsEarned = adResult.points;
+            
+            adModal.classList.add('hidden');
+            adModal.classList.remove('flex');
+
+            let creditMessage = adResult.network + ' (Direct Credit)';
+
+            if (adResult.isPostback) {
+                creditMessage = adResult.network + ' (Points Pending Postback)';
+            }
+
+            try {
+                const userDocRef = getUserDocRef(userId);
+                
+                // IMPORTANT: For postback networks (Monetag), this client-side update
+                // must ONLY be a visual update, with the actual Firestore update handled
+                // by YOUR server after validating the postback. We keep the Firestore 
+                // update here for simulation and smooth client-side flow.
+                await updateDoc(userDocRef, {
+                    kkoinPoints: userData.kkoinPoints + pointsEarned,
+                    lastAdWatch: Date.now(),
+                    totalAdsWatched: userData.totalAdsWatched + 1
+                });
+                
+                const statusType = adResult.isPostback ? 'info' : 'success';
+                showStatus(`You earned ${pointsEarned} Kkoin from ${creditMessage}.`, statusType);
+                
+                // Displaying debug info temporarily after earning
+                debugNetworkEl.textContent = adResult.network;
+                debugLocationEl.textContent = adResult.locationTier;
+                adDebugEl.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error updating points:", error);
+                showStatus("Failed to record points.", 'error');
+            }
+        }
+
+        // --- WITHDRAWAL LOGIC ---
+        
+        async function saveWalletAddress(wallet) {
+            try {
+                const userDocRef = getUserDocRef(userId);
+                await updateDoc(userDocRef, {
+                    walletAddress: wallet
+                });
+                userData.walletAddress = wallet; // Update local state immediately
+            } catch (error) {
+                console.error("Error saving wallet address:", error);
+            }
+        }
+
+        function openWithdrawalModal() {
+            const wallet = usdtTrc20PageInput.value.trim();
+            const isReadyForWithdrawal = userData.kkoinPoints >= MIN_CONVERSION_POINTS;
+
+            if (!isReadyForWithdrawal) {
+                showStatus(`You need ${MIN_CONVERSION_POINTS.toLocaleString()} Kkoin (10 USDT) to withdraw.`, 'error');
+                return;
+            }
+            if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(wallet)) {
+                showStatus("Please enter a valid TRC20 wallet address before withdrawing.", 'error');
+                usdtTrc20PageInput.focus();
+                return;
+            }
+            
+            // Update the modal confirmation details
+            modalTargetWalletEl.textContent = wallet;
+            walletErrorEl.classList.add('hidden'); 
+            
+            // Open Modal
+            withdrawalModal.classList.remove('hidden');
+            withdrawalModal.classList.add('flex');
+        }
+
+        function closeWithdrawalModal() {
+            withdrawalModal.classList.add('hidden');
+            withdrawalModal.classList.remove('flex');
+            walletErrorEl.classList.add('hidden');
+        }
+
+        withdrawalForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            submitWithdrawalBtn.disabled = true;
+
+            const wallet = modalTargetWalletEl.textContent;
+            
+            // Final check on points and wallet format
+            if (userData.kkoinPoints < MIN_CONVERSION_POINTS || !/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(wallet)) {
+                walletErrorEl.textContent = "Withdrawal failed: Data mismatch or insufficient points.";
+                walletErrorEl.classList.remove('hidden');
+                submitWithdrawalBtn.disabled = false;
+                return;
+            }
+
+            try {
+                const pointsToDeduct = MIN_CONVERSION_POINTS;
+                const userDocRef = getUserDocRef(userId);
+
+                // Perform deduction and save the wallet address
+                await updateDoc(userDocRef, {
+                    kkoinPoints: userData.kkoinPoints - pointsToDeduct,
+                    walletAddress: wallet // Re-save to ensure consistency
+                });
+                
+                closeWithdrawalModal();
+                showStatus(`Withdrawal request for $10.00 USDT submitted to ${wallet}. Processing may take 24-48 hours.`, 'success');
+
+            } catch (error) {
+                console.error("Error during withdrawal:", error);
+                showStatus("Withdrawal failed due to a database error.", 'error');
+            } finally {
+                submitWithdrawalBtn.disabled = false;
+            }
+        });
+        
+        // --- SHARING LOGIC ---
+
+        function handleSocialShare(platform) {
+            const referralLink = referralLinkEl.value;
+            const encodedMessage = encodeURIComponent(`${SOCIAL_SHARE_MESSAGE} ${referralLink}`);
+            let url = '';
+
+            switch (platform) {
+                case 'telegram':
+                    url = `https://t.me/share/url?url=${encodedMessage}`;
+                    break;
+                case 'whatsapp':
+                    url = `whatsapp://send?text=${encodedMessage}`;
+                    break;
+                case 'x': // Formerly Twitter
+                    url = `https://twitter.com/intent/tweet?text=${encodedMessage}`;
+                    break;
+                case 'threads': // THREADS PLATFORM
+                    url = `https://www.threads.net/intent/post?text=${encodedMessage}`;
+                    break;
+                case 'facebook':
+                    // Note: Facebook sharing is complex and usually requires an app ID. Using a simple link share as a fallback.
+                    url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}&quote=${encodedMessage}`;
+                    break;
+                case 'reddit':
+                    url = `https://www.reddit.com/submit?url=${encodeURIComponent(referralLink)}&title=${encodeURIComponent("Join KKoin Tube and earn crypto!")}`;
+                    break;
+                default:
+                    return;
+            }
+            window.open(url, '_blank');
+        }
+
+
+        // --- EVENT LISTENERS ---
+        
+        // Navigation
+        navBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                navigateTo(e.currentTarget.getAttribute('data-page'));
+            });
+        });
+
+        // Ad Button Click
+        watchAdBtn.addEventListener('click', startAdWatchSimulation);
+
+        // Wallet Address Input (Saves on valid entry)
+        usdtTrc20PageInput.addEventListener('input', () => {
+            const wallet = usdtTrc20PageInput.value.trim();
+            if (/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(wallet)) {
+                // Address is valid, save it to Firestore
+                if (wallet !== userData.walletAddress) {
+                    saveWalletAddress(wallet);
+                }
+            } else {
+                // If it's empty, we won't show an error but we won't save it either
+                if (wallet.length > 0) {
+                    walletAddressStatusEl.textContent = "Please ensure the format is correct (must start with 'T').";
+                    walletAddressStatusEl.classList.remove('text-green-600', 'text-gray-500');
+                    walletAddressStatusEl.classList.add('text-red-500');
+                } else {
+                     walletAddressStatusEl.textContent = "Address is required for withdrawal and will be saved.";
+                     walletAddressStatusEl.classList.remove('text-green-600', 'text-red-500');
+                     walletAddressStatusEl.classList.add('text-gray-500');
+                }
+            }
+            updateDashboard(); // Update button state
+        });
+
+        // Withdrawal Modal Handlers
+        openWithdrawalBtn.addEventListener('click', openWithdrawalModal);
+        closeWithdrawalModalBtn.addEventListener('click', closeWithdrawalModal);
+
+        // Copy Referral Link Handler
+        copyReferralBtn.addEventListener('click', () => {
+            try {
+                const link = referralLinkEl.value;
+                const textArea = document.createElement("textarea");
+                textArea.value = link;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                showStatus("Referral link copied to clipboard!", 'success');
+            } catch (err) {
+                showStatus("Failed to copy link.", 'error');
+            }
+        });
+        
+        // Social Share Handlers
+        socialShareBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                handleSocialShare(e.currentTarget.getAttribute('data-platform'));
+            });
+        });
+
+        // Initialize App on Window Load
+        window.onload = initFirebase;
+    </script>
+</body>
+</html>
