@@ -8,7 +8,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
     <!-- 2. Ad Network SDKs -->
-    <!-- RichAds SDK (RichAds) -->
+    <!-- RichAds SDK (RichAds - Network C) -->
     <script src="https://richinfo.co/richpartners/telegram/js/tg-ob.js"></script>
     <script>
         // RichAds Initialization (Network C)
@@ -116,7 +116,9 @@
                 </div>
 
                 <!-- UPDATED POINT VALUE -->
-                <p class="text-sm text-purple-800 font-semibold">Share your unique link to help you reach the <span class="font-bold">100 Referral Minimum</span> for withdrawal! Earn <span class="font-bold">1,000 Kkoin</span> per successful sign-up!</p>
+                <p class="text-sm text-purple-800 font-semibold">
+                    **Share your unique link and earn 1,000 Kkoin per sign-up!** Help your friends start earning crypto today.
+                </p>
                 
                 <!-- Referral Link Box -->
                 <div class="flex items-center space-x-2">
@@ -246,8 +248,43 @@
         setLogLevel('debug');
 
         // --- GLOBAL CONFIG & INITIALIZATION ---
+        
+        // --- CRITICAL FIRESTORE SECURITY RULES ---
+        /* The app needs these rules to run without the "Missing or insufficient permissions" error.
+        Please copy the rules below and paste them into your Firebase Firestore -> Rules tab:
+
+        rules_version = '2';
+        service cloud.firestore {
+          match /databases/{database}/documents {
+
+            // Rule 1: User's Private Data (kkoin_data/profile)
+            // Allows authenticated user to read/write ONLY their own profile document.
+            // Path: /artifacts/{appId}/users/{userId}/kkoin_data/profile
+            match /artifacts/{appId}/users/{userId}/kkoin_data/{documentId} {
+                allow read, write: if request.auth != null && request.auth.uid == userId;
+            }
+
+            // Rule 2: Public Referral Events (Public Read, Authenticated Write)
+            // Path: /artifacts/{appId}/public/data/referral_events/{documentId}
+            match /artifacts/{appId}/public/data/referral_events/{documentId} {
+              allow read: if request.auth != null;
+              allow create: if request.auth != null;
+            }
+          }
+        }
+        */
+        // --- END CRITICAL FIRESTORE SECURITY RULES ---
+
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-kkoin-app';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const firebaseConfig = {
+            apiKey: "AIzaSyBIRfyXKD-wOStJe1HQ_90ICCa1loRCLec",
+            authDomain: "kkoin-tube.firebaseapp.com",
+            projectId: "kkoin-tube",
+            storageBucket: "kkoin-tube.firebasestorage.app",
+            messagingSenderId: "549641344693",
+            appId: "1:549641344693:web:13ad7b7761ee6c900790fc",
+            measurementId: "G-R1R2GPT6NZ"
+        };
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         let app, db, auth, userId = null;
@@ -451,11 +488,9 @@
                         initRichAdsController(userId);
                         lucide.createIcons();
                     } else {
-                        if (initialAuthToken) {
-                            await signInWithCustomToken(auth, initialAuthToken);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
+                        // FIX: Changed from using signInWithCustomToken to signInAnonymously 
+                        // as the custom token is incompatible with the user-provided firebaseConfig.
+                        await signInAnonymously(auth);
                     }
                 });
 
@@ -491,8 +526,9 @@
                     });
                 }
             }, (error) => {
+                // This is the error handler for insufficient permissions
                 console.error("Error listening to user data:", error);
-                showStatus("Error fetching real-time data.", 'error');
+                showStatus("Error fetching real-time data. Check Firestore Security Rules!", 'error');
             });
             
             setupReferralCountListener(uid);
@@ -740,33 +776,28 @@
         }
         
         function loadMonetag(adResult) {
+            // All Monetag formats currently share the same Zone ID (10143671)
+            const zoneId = MONETAG_CONFIGS[0].id; 
+            const showAdFunction = window[`show_${zoneId}`];
             const currentConfigIndex = userData.totalAdsWatched % MONETAG_CONFIGS.length;
             const currentConfig = MONETAG_CONFIGS[currentConfigIndex];
-            const zoneId = currentConfig.id; // All use the same zone for now
-            const format = currentConfig.format;
-            
-            // Get the specific Monetag function name (e.g., show_10143671)
-            const showAdFunction = window[`show_${zoneId}`];
 
             if (!showAdFunction) return hideAdModal(adResult.network, 'error');
 
-            // Logic to call the appropriate Monetag function based on format
             let adPromise;
             
             try {
-                if (format === 'interstitial') {
-                    // show_10143671().then(...)
+                if (currentConfig.format === 'interstitial') {
+                    // Rewarded interstitial: show_10143671().then(...)
                     adPromise = showAdFunction();
-                } else if (format === 'pop') {
-                    // show_10143671('pop').then(...)
+                } else if (currentConfig.format === 'pop') {
+                    // Rewarded Popup: show_10143671('pop').then(...)
                     adPromise = showAdFunction('pop');
-                } else if (format === 'inApp') {
-                    // Non-rewarded ad, no points, just show the ad
-                    // show_10143671({ type: 'inApp', inAppSettings: {...} })
+                } else if (currentConfig.format === 'inApp') {
+                    // Non-rewarded In-app Interstitial (Must not trigger reward)
                     showAdFunction({ type: 'inApp', inAppSettings: currentConfig.inAppSettings });
                     hideAdModal(adResult.network, 'success'); // Immediately hide the modal as MonetaG handles the visual overlay
-                    // DO NOT RESOLVE AD PROMISE/CALL finishAdWatch FOR NON-REWARDED ADS
-                    return; 
+                    return; // EXIT: NO REWARD
                 } else {
                     return hideAdModal(adResult.network, 'error');
                 }
@@ -776,10 +807,11 @@
                     if (currentConfig.type === 'rewarded') {
                         finishAdWatch(adResult);
                     } else {
-                        hideAdModal(adResult.network, 'success'); // Should not happen based on current config but safe
+                        // Safety catch for non-rewarded promise resolution
+                        hideAdModal(adResult.network, 'success'); 
                     }
                 }).catch(e => {
-                    console.error(`Monetag ${format} ad error:`, e);
+                    console.error(`Monetag ${currentConfig.format} ad error:`, e);
                     hideAdModal(adResult.network, 'error');
                 });
 
