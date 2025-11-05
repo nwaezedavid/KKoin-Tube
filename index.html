@@ -73,8 +73,8 @@
                 <p id="ad-debug" class="text-xs text-gray-500 hidden mt-2">Points based on: <span id="debug-network"></span> in <span id="debug-location"></span></p>
             </div>
             
-            <!-- Ad Slots for Placement -->
-            <div class="space-y-4 pt-4 border-t border-gray-200">
+            <!-- Ad Slots for Placement (FIX: Added 'hidden' class to hide this from users) -->
+            <div class="space-y-4 pt-4 border-t border-gray-200 hidden">
                 <p class="text-sm font-semibold text-gray-600">Ad Placement Areas (Hidden from users):</p>
                 
                 <!-- ADSGRAM AD SLOT -->
@@ -247,25 +247,23 @@
         // Set Firebase Log Level for debugging
         setLogLevel('debug');
 
-        // --- GLOBAL CONFIG & INITIALIZATION ---
-        
-        // --- CRITICAL FIRESTORE SECURITY RULES ---
-        /* The app needs these rules to run without the "Missing or insufficient permissions" error.
-        Please copy the rules below and paste them into your Firebase Firestore -> Rules tab:
-
+        // --- CRITICAL: FIREBASE SECURITY RULES ---
+        // You MUST paste these rules into your Firebase Project's Firestore Rules tab
+        // to fix the "Missing or insufficient permissions" error.
+        /*
         rules_version = '2';
         service cloud.firestore {
           match /databases/{database}/documents {
 
             // Rule 1: User's Private Data (kkoin_data/profile)
-            // Allows authenticated user to read/write ONLY their own profile document.
-            // Path: /artifacts/{appId}/users/{userId}/kkoin_data/profile
+            // Allows any authenticated user to read/write ONLY to their specific profile document.
             match /artifacts/{appId}/users/{userId}/kkoin_data/{documentId} {
                 allow read, write: if request.auth != null && request.auth.uid == userId;
             }
 
             // Rule 2: Public Referral Events (Public Read, Authenticated Write)
-            // Path: /artifacts/{appId}/public/data/referral_events/{documentId}
+            // Allows any authenticated user to read all referral events (to calculate count)
+            // and allows any authenticated user to create a new referral event.
             match /artifacts/{appId}/public/data/referral_events/{documentId} {
               allow read: if request.auth != null;
               allow create: if request.auth != null;
@@ -273,8 +271,10 @@
           }
         }
         */
-        // --- END CRITICAL FIRESTORE SECURITY RULES ---
+        // --- END OF SECURITY RULES ---
 
+
+        // --- GLOBAL CONFIG & INITIALIZATION ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-kkoin-app';
         const firebaseConfig = {
             apiKey: "AIzaSyBIRfyXKD-wOStJe1HQ_90ICCa1loRCLec",
@@ -289,6 +289,7 @@
 
         let app, db, auth, userId = null;
         let AdsgramController = null; // Controller for Adsgram SDK
+        let isUserDataInitialized = false; // FIX: State to track if user data has been loaded once
 
         let userData = {
             kkoinPoints: 0,
@@ -309,7 +310,7 @@
         const REFERRAL_INITIAL_BONUS_POINTS = 500; // Half of the new bonus
         const MIN_REFERRALS_FOR_WITHDRAWAL = 100; // Hard requirement
         const AD_WATCH_COOLDOWN_MS = 30000; // 30 seconds cooldown between ad watches
-        const AD_WATCH_DURATION_MS = 10000; // 10 seconds simulated ad watching time
+        const AD_NETWORK_TIMEOUT_MS = 3000; // 3 seconds timeout for ad networks
         const SOCIAL_SHARE_MESSAGE = "🚀 Earn crypto effortlessly with KKoin Tube! Watch short videos, earn Kkoin, and withdraw to USDT. Join me now using my unique link and get a bonus start! Don't miss out:";
 
         // --- PROFIT LOGIC CONSTANTS ---
@@ -391,10 +392,7 @@
                 const WebApp = window.Telegram.WebApp;
                 WebApp.ready();
                 WebApp.expand();
-                // Set theme colors
                 document.body.style.backgroundColor = WebApp.backgroundColor || '#f3f4f6'; 
-
-                // Set up the Back Button
                 WebApp.BackButton.show();
                 WebApp.BackButton.onClick(() => { WebApp.close(); });
             } else {
@@ -427,7 +425,6 @@
         // --- AD NETWORK INITIALIZATION ---
         function initAdsgramController() {
              if (typeof window.Adsgram !== 'undefined') {
-                // Initialize the Adsgram Controller with the first block ID
                 AdsgramController = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_IDS[0] });
                 console.log("Adsgram Controller Initialized.");
              } else {
@@ -436,7 +433,6 @@
         }
         
         function initRichAdsController(uid) {
-            // RichAds is initialized via the script in the <head> but we can expose the user ID here if needed
             if (typeof window.TelegramAdsController !== 'undefined') {
                 console.log(`RichAds Controller Initialized with User ID: ${uid}`);
             } else {
@@ -483,13 +479,10 @@
                         userIdDisplayEl.textContent = userId;
                         referralLinkEl.value = `${window.location.origin}${window.location.pathname}?startapp=${userId}`;
                         setupUserListener(userId);
-                        checkInitialReferral(userId);
-                        initAdsgramController(userId); // Initialize Ad Controllers
+                        initAdsgramController(userId);
                         initRichAdsController(userId);
                         lucide.createIcons();
                     } else {
-                        // FIX: Changed from using signInWithCustomToken to signInAnonymously 
-                        // as the custom token is incompatible with the user-provided firebaseConfig.
                         await signInAnonymously(auth);
                     }
                 });
@@ -508,6 +501,13 @@
                 if (docSnap.exists()) {
                     userData = { ...userData, ...docSnap.data() };
                     usdtTrc20PageInput.value = userData.walletAddress || '';
+                    
+                    // FIX: Run referral check only ONCE after user data is loaded
+                    if (!isUserDataInitialized) {
+                        isUserDataInitialized = true;
+                        checkInitialReferral(uid); // <-- Moved call here
+                    }
+                    
                     updateDashboard();
                 } else {
                     setDoc(userDocRef, {
@@ -519,6 +519,13 @@
                         hasReceivedInitialBonus: false
                     }).then(() => {
                         console.log("New user profile created.");
+                        
+                        // FIX: Run referral check for NEW users as well
+                        if (!isUserDataInitialized) {
+                            isUserDataInitialized = true;
+                            checkInitialReferral(uid); // <-- Also add call here
+                        }
+
                         updateDashboard();
                     }).catch(err => {
                         console.error("Error creating user profile:", err);
@@ -526,9 +533,8 @@
                     });
                 }
             }, (error) => {
-                // This is the error handler for insufficient permissions
                 console.error("Error listening to user data:", error);
-                showStatus("Error fetching real-time data. Check Firestore Security Rules!", 'error');
+                showStatus("Error fetching real-time data.", 'error');
             });
             
             setupReferralCountListener(uid);
@@ -542,7 +548,7 @@
 
                 referralCountDisplayEl.textContent = userData.totalReferrals.toLocaleString();
                 referralEarningsDisplayEl.textContent = userData.totalReferralEarnings.toLocaleString();
-                updateDashboard(); // Important to update the withdrawal button after referral count changes
+                updateDashboard();
             }, (error) => {
                 console.error("Error listening to referral events:", error);
             });
@@ -741,131 +747,175 @@
             adModal.classList.remove('flex');
             
             if (status === 'error') {
-                showStatus(`Ad from ${networkName} failed to load or play. Please try again shortly.`, 'error');
+                console.warn(`Ad from ${networkName} failed to load or play.`);
+                // We show a generic failure message only if all networks fail
             } else if (status === 'success') {
                 // Status is handled by finishAdWatch
             }
         }
         
-        // --- AD NETWORK LOADERS ---
+        // --- AD NETWORK LOADERS (WATERFALL SYSTEM) ---
+
+        /**
+         * Wraps an ad network's load promise with a timeout.
+         * @param {Promise} adPromise - The promise returned by the ad network SDK.
+         * @param {string} networkName - The name of the network for logging.
+         * @returns {Promise} - A promise that resolves on ad success or rejects on timeout/failure.
+         */
+        function withTimeout(adPromise, networkName) {
+            return new Promise((resolve, reject) => {
+                const timer = setTimeout(() => {
+                    reject(new Error(`${networkName} timed out after ${AD_NETWORK_TIMEOUT_MS}ms`));
+                }, AD_NETWORK_TIMEOUT_MS);
+
+                adPromise.then(
+                    (result) => {
+                        clearTimeout(timer);
+                        resolve(result);
+                    },
+                    (error) => {
+                        clearTimeout(timer);
+                        reject(error);
+                    }
+                );
+            });
+        }
         
         function loadAdsgram(adResult) {
-            if (!AdsgramController) return hideAdModal(adResult.network, 'error');
+            return new Promise((resolve, reject) => {
+                if (!AdsgramController) {
+                    return reject(new Error("Adsgram Controller not initialized."));
+                }
 
-            const adIndex = userData.totalAdsWatched % ADSGRAM_BLOCK_IDS.length;
-            const currentBlockId = ADSGRAM_BLOCK_IDS[adIndex];
-            
-            // Re-initialize controller with the correct blockId for the rotation
-            try {
-                 AdsgramController.init({ blockId: currentBlockId }); 
-            } catch(e) {
-                 console.error("Adsgram init error on rotation:", e);
-            }
-            
-            // Assuming Adsgram has a method like showRewardedAd()
-            AdsgramController.showRewardedAd()
-                .then(() => {
-                    // Success callback: ad played and reward granted
-                    finishAdWatch(adResult);
-                })
-                .catch(e => {
-                    // Failure: ad failed to load, was skipped, or network error
-                    console.error("Adsgram ad error:", e);
-                    hideAdModal(adResult.network, 'error');
-                });
+                const adIndex = userData.totalAdsWatched % ADSGRAM_BLOCK_IDS.length;
+                const currentBlockId = ADSGRAM_BLOCK_IDS[adIndex];
+                
+                try {
+                    AdsgramController.init({ blockId: currentBlockId }); 
+                    AdsgramController.showRewardedAd()
+                        .then(() => resolve(adResult)) // Success
+                        .catch((e) => reject(e));     // Failure
+                } catch(e) {
+                    reject(e); // SDK initialization error
+                }
+            });
         }
         
         function loadMonetag(adResult) {
-            // All Monetag formats currently share the same Zone ID (10143671)
-            const zoneId = MONETAG_CONFIGS[0].id; 
-            const showAdFunction = window[`show_${zoneId}`];
-            const currentConfigIndex = userData.totalAdsWatched % MONETAG_CONFIGS.length;
-            const currentConfig = MONETAG_CONFIGS[currentConfigIndex];
+            return new Promise((resolve, reject) => {
+                const zoneId = MONETAG_CONFIGS[0].id; 
+                const showAdFunction = window[`show_${zoneId}`];
+                const currentConfigIndex = userData.totalAdsWatched % MONETAG_CONFIGS.length;
+                const currentConfig = MONETAG_CONFIGS[currentConfigIndex];
 
-            if (!showAdFunction) return hideAdModal(adResult.network, 'error');
-
-            let adPromise;
-            
-            try {
-                if (currentConfig.format === 'interstitial') {
-                    // Rewarded interstitial: show_10143671().then(...)
-                    adPromise = showAdFunction();
-                } else if (currentConfig.format === 'pop') {
-                    // Rewarded Popup: show_10143671('pop').then(...)
-                    adPromise = showAdFunction('pop');
-                } else if (currentConfig.format === 'inApp') {
-                    // Non-rewarded In-app Interstitial (Must not trigger reward)
-                    showAdFunction({ type: 'inApp', inAppSettings: currentConfig.inAppSettings });
-                    hideAdModal(adResult.network, 'success'); // Immediately hide the modal as MonetaG handles the visual overlay
-                    return; // EXIT: NO REWARD
-                } else {
-                    return hideAdModal(adResult.network, 'error');
+                if (!showAdFunction) {
+                    return reject(new Error("Monetag function show_" + zoneId + " not found."));
                 }
-                
-                // --- Handle Rewarded Ad Promises ---
-                adPromise.then(() => {
-                    if (currentConfig.type === 'rewarded') {
-                        finishAdWatch(adResult);
-                    } else {
-                        // Safety catch for non-rewarded promise resolution
-                        hideAdModal(adResult.network, 'success'); 
-                    }
-                }).catch(e => {
-                    console.error(`Monetag ${currentConfig.format} ad error:`, e);
-                    hideAdModal(adResult.network, 'error');
-                });
 
-            } catch (e) {
-                console.error("Monetag ad execution error:", e);
-                hideAdModal(adResult.network, 'error');
-            }
+                let adPromise;
+                
+                try {
+                    if (currentConfig.format === 'interstitial') {
+                        adPromise = showAdFunction();
+                    } else if (currentConfig.format === 'pop') {
+                        adPromise = showAdFunction('pop');
+                    } else if (currentConfig.format === 'inApp') {
+                        // Non-rewarded Ad
+                        showAdFunction({ type: 'inApp', inAppSettings: currentConfig.inAppSettings });
+                        // This format is "fire and forget" and non-rewarded, so we 'reject' it
+                        // from the earning waterfall to allow the next network to run.
+                        return reject(new Error("Monetag In-App (non-rewarded) shown."));
+                    } else {
+                        return reject(new Error("Unknown Monetag format."));
+                    }
+                    
+                    // Handle Rewarded Ad Promise
+                    adPromise
+                        .then(() => resolve(adResult)) // Success
+                        .catch((e) => reject(e));      // Failure
+                
+                } catch (e) {
+                    reject(e);
+                }
+            });
         }
         
         function loadRichAds(adResult) {
-            if (typeof window.TelegramAdsController === 'undefined') return hideAdModal(adResult.network, 'error');
-
-            const controller = window.TelegramAdsController;
-            
-            // Simulate 10-second viewing time before calling the successful callback
-            let remaining = AD_WATCH_DURATION_MS / 1000;
-            adCountdownTextEl.textContent = `Time remaining: ${remaining}s`;
-
-            const countdownInterval = setInterval(() => {
-                remaining--;
-                adCountdownTextEl.textContent = `Time remaining: ${remaining}s`;
-                if (remaining <= 0) {
-                    clearInterval(countdownInterval);
-                    finishAdWatch(adResult); // Reward the user
+             return new Promise((resolve, reject) => {
+                if (typeof window.TelegramAdsController === 'undefined') {
+                    return reject(new Error("RichAds Controller not initialized."));
                 }
-            }, 1000);
-            
-            // In a real app, RichAds SDK would show the ad, and its callback would trigger finishAdWatch(adResult)
-            console.log(`RichAds: Simulating ad play in modal for ${AD_WATCH_DURATION_MS / 1000} seconds.`);
+                
+                // --- This is a MOCK implementation ---
+                // In a real app, you would call window.TelegramAdsController.showRewardedAd(...)
+                // and use its real success/error callbacks.
+                
+                // Simulate 3-second ad play *within* the timeout window
+                const simulationTime = 2500; // 2.5 seconds, less than 3sec timeout
+                
+                let remaining = Math.ceil(simulationTime / 1000);
+                adCountdownTextEl.textContent = `Time remaining: ${remaining}s`;
+
+                const countdownInterval = setInterval(() => {
+                    remaining--;
+                    adCountdownTextEl.textContent = `Time remaining: ${remaining}s`;
+                    if (remaining <= 0) {
+                        clearInterval(countdownInterval);
+                        resolve(adResult); // Reward the user
+                    }
+                }, 1000);
+            });
         }
 
-        function startAdWatchSimulation() {
+        async function startAdWatchSimulation() {
             if (watchAdBtn.disabled) return;
             
-            watchAdBtn.disabled = true; // Disable button immediately
-            adDebugEl.classList.add('hidden'); // Hide debug info initially
+            watchAdBtn.disabled = true;
+            adDebugEl.classList.add('hidden');
 
-            // Rotate through the configured ad networks (A, B, C, A, B, C, ...)
-            const selectedNetworkConfig = AD_NETWORK_CONFIGS[userData.totalAdsWatched % AD_NETWORK_CONFIGS.length];
-            const adResult = calculateAdPoints(selectedNetworkConfig);
-            
-            showAdModal(adResult.network);
-            
-            // Dispatch to the correct loader function
-            if (selectedNetworkConfig.name === 'Adsgram.ai') {
-                loadAdsgram(adResult);
-            } else if (selectedNetworkConfig.name === 'Monetag') {
-                loadMonetag(adResult);
-            } else if (selectedNetworkConfig.name === 'RichAds') {
-                loadRichAds(adResult);
-            } else {
-                hideAdModal(selectedNetworkConfig.name, 'error');
+            const networkOrder = AD_NETWORK_CONFIGS; // [A, B, C]
+            let adResult = null;
+            let adLoadedSuccessfully = false;
+
+            for (let i = 0; i < networkOrder.length; i++) {
+                const networkConfig = networkOrder[i];
+                adResult = calculateAdPoints(networkConfig);
+                
+                showAdModal(adResult.network);
+                
+                try {
+                    let adPromise;
+                    if (networkConfig.name === 'Adsgram.ai') {
+                        adPromise = loadAdsgram(adResult);
+                    } else if (networkConfig.name === 'Monetag') {
+                        adPromise = loadMonetag(adResult);
+                    } else if (networkConfig.name === 'RichAds') {
+                        adPromise = loadRichAds(adResult);
+                    }
+
+                    // Wrap the ad promise with our 3-second timeout
+                    const finalResult = await withTimeout(adPromise, adResult.network);
+                    
+                    // --- SUCCESS ---
+                    await finishAdWatch(finalResult);
+                    adLoadedSuccessfully = true;
+                    break; // Exit the loop on first success
+
+                } catch (error) {
+                    // --- FAILURE or TIMEOUT ---
+                    console.warn(`Failed to load ad from ${adResult.network}:`, error.message);
+                    hideAdModal(adResult.network, 'error');
+                    // Continue to the next network in the loop...
+                }
+            }
+
+            if (!adLoadedSuccessfully) {
+                // All networks failed
+                showStatus("No ads are available at the moment. Please try again shortly.", 'error');
+                updateAdButtonState(); // Re-enable the button after cooldown
             }
         }
+
 
         async function finishAdWatch(adResult) {
             const pointsEarned = adResult.points;
@@ -897,7 +947,6 @@
                 console.error("Error updating points:", error);
                 showStatus("Failed to record points.", 'error');
             } finally {
-                // Ensure button is re-enabled if timeout fails to run (fallback)
                 updateAdButtonState();
             }
         }
@@ -956,7 +1005,6 @@
 
             const wallet = modalTargetWalletEl.textContent;
             
-            // Final check on points and wallet format
             if (userData.kkoinPoints < MIN_CONVERSION_POINTS || userData.totalReferrals < MIN_REFERRALS_FOR_WITHDRAWAL || !/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(wallet)) {
                 walletErrorEl.textContent = "Withdrawal failed: Minimum requirements not met.";
                 walletErrorEl.classList.remove('hidden');
