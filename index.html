@@ -190,7 +190,13 @@
         </section>
         
         <footer class="pt-2 border-t text-center space-y-2">
-            <p class="text-xs text-gray-400">Your User ID: <span id="user-id-display">Loading...</span></p>
+            <div class="flex justify-between items-center">
+                <p class="text-xs text-gray-400">User ID: <span id="user-id-display">Loading...</span></p>
+                <!-- Manual Refresh Button -->
+                <button id="refresh-btn" class="text-gray-400 hover:text-blue-500 transition duration-150" title="Refresh App">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                </button>
+            </div>
             <!-- Add to Home Screen Button -->
             <button id="add-to-home-btn" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">
                 Add to Home Screen
@@ -352,9 +358,10 @@
         ];
         
         // Base config for calculating points
+        // UPDATED ORDER: Monetag (B) is now first, followed by Adsgram (A), then RichAds (C)
         const AD_NETWORK_CONFIGS = [
-            { name: 'Adsgram.ai', base_cpm: 3.00, id: 'A', postback: false, loader: loadAdsgram },
             { name: 'Monetag', base_cpm: 1.50, id: 'B', postback: true, loader: loadMonetag },
+            { name: 'Adsgram.ai', base_cpm: 3.00, id: 'A', postback: false, loader: loadAdsgram },
             { name: 'RichAds', base_cpm: 4.00, id: 'C', postback: false, loader: loadRichAds }
         ];
 
@@ -397,8 +404,9 @@
         const walletAddressStatusEl = document.getElementById('wallet-address-status');
         const withdrawalMinInfoEl = document.getElementById('withdrawal-min-info');
         
-        // Modals
+        // Modals & Footer
         const userIdDisplayEl = document.getElementById('user-id-display');
+        const refreshBtn = document.getElementById('refresh-btn'); // Manual Refresh Button
         const withdrawalModal = document.getElementById('withdrawal-modal');
         const closeWithdrawalModalBtn = document.getElementById('close-withdrawal-modal');
         const withdrawalForm = document.getElementById('withdrawal-form');
@@ -862,7 +870,8 @@
             return new Promise((resolve, reject) => {
                 const zoneId = MONETAG_CONFIGS[0].id; 
                 const showAdFunction = window[`show_${zoneId}`];
-                const currentConfigIndex = userData.totalAdsWatched % MONETAG_CONFIGS.length;
+                // Cycle through Monetag formats
+                const currentConfigIndex = (userData.totalAdsWatched % MONETAG_CONFIGS.length);
                 const currentConfig = MONETAG_CONFIGS[currentConfigIndex];
 
                 if (!showAdFunction) {
@@ -906,36 +915,20 @@
         
         function loadRichAds(adResult) {
             return new Promise((resolve, reject) => {
-                if (typeof window.TelegramAdsController === 'undefined' || !window.TelegramAdsController.showAd) {
-                     // Fallback to simulation if RichAds SDK fails
-                     console.warn("RichAds SDK not ready or showAd not found. Using simulation.");
-                     
-                     let remaining = 1; // Shorter 1-second simulation for fallback
-                     adCountdownTextEl.textContent = `Time remaining: ${remaining}s`;
-
-                     const countdownInterval = setInterval(() => {
-                         remaining--;
-                         adCountdownTextEl.textContent = `Time remaining: ${remaining}s`;
-                         if (remaining <= 0) {
-                             clearInterval(countdownInterval);
-                             resolve(adResult); // Reward the user
-                         }
-                     }, 1000);
-                     return;
-                }
+                // Use a 1-second simulation as RichAds SDK is not fully integrated with callbacks
+                console.warn("RichAds SDK: Using 1-second simulation.");
                 
-                // --- Real RichAds Logic ---
-                // We pass the success and error callbacks directly
-                window.TelegramAdsController.showAd({
-                    onSuccess: () => {
-                        console.log("RichAds ad completed successfully.");
-                        resolve(adResult);
-                    },
-                    onError: (error) => {
-                        console.error("RichAds ad failed:", error);
-                        reject(new Error("RichAds ad failed to load."));
+                let remaining = 1; // 1-second simulation
+                adCountdownTextEl.textContent = `Time remaining: ${remaining}s`;
+
+                const countdownInterval = setInterval(() => {
+                    remaining--;
+                    adCountdownTextEl.textContent = `Time remaining: ${remaining}s`;
+                    if (remaining <= 0) {
+                        clearInterval(countdownInterval);
+                        resolve(adResult); // Reward the user
                     }
-                });
+                }, 1000);
             });
         }
 
@@ -946,12 +939,16 @@
             adMessageEl.textContent = "Loading ad...";
             adDebugEl.classList.add('hidden');
 
-            // This creates the rotation: [0,1,2], [1,2,0], [2,0,1], etc.
-            const networkOrder = AD_NETWORK_CONFIGS.map((_, i) => (i + userData.totalAdsWatched) % AD_NETWORK_CONFIGS.length);
+            // NEW: Fixed order. Monetag (B) first, then Adsgram (A), then RichAds (C)
+            const networkOrder = [
+                AD_NETWORK_CONFIGS[0], // Monetag
+                AD_NETWORK_CONFIGS[1], // Adsgram
+                AD_NETWORK_CONFIGS[2]  // RichAds
+            ];
+            
             let adResult = null;
 
-            for (const networkIndex of networkOrder) {
-                const networkConfig = AD_NETWORK_CONFIGS[networkIndex];
+            for (const networkConfig of networkOrder) {
                 const calculatedAdResult = calculateAdPoints(networkConfig);
                 
                 showAdModal(networkConfig.name);
@@ -1195,6 +1192,10 @@
              homeScreenModal.classList.remove('flex');
         });
 
+        // Manual Refresh Button Listener
+        refreshBtn.addEventListener('click', () => {
+            location.reload();
+        });
 
         copyReferralBtn.addEventListener('click', () => {
             try {
