@@ -61,7 +61,7 @@
             <!-- Watch Ad Button & Ad Simulation Area -->
             <div id="ad-watch-container" class="bg-blue-50 p-4 rounded-lg shadow-inner text-center space-y-3">
                 <p class="text-blue-700 font-semibold" id="ad-message">Click below to watch an ad.</p>
-                <button id="watch-ad-btn" class="w-full bg-blue-600 hover:bg-blue-7Git 00 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                <button id="watch-ad-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
                     Watch Video Ad (Earn Kkoin)
                 </button>
                 <p id="ad-cooldown" class="hidden text-sm text-red-500 font-medium"></p>
@@ -853,7 +853,7 @@
                         resolve(adResult); // Success: Ad watched
                     })
                     .catch(e => {
-                        reject(new Error(`Adsgram ad error: ${e.message}`)); // Failure
+                        reject(new Error(`Adsgram ad error: ${e.message || 'Ad skipped or failed'}`)); // Failure
                     });
             });
         }
@@ -895,7 +895,7 @@
                             resolve(null); // Non-rewarded (shouldn't happen here, but safe)
                         }
                     }).catch(e => {
-                        reject(new Error(`Monetag ${currentConfig.format} ad error: ${e.message}`));
+                        reject(new Error(`Monetag ${currentConfig.format} ad error: ${e.message || 'Ad skipped or failed'}`));
                     });
 
                 } catch (e) {
@@ -910,7 +910,7 @@
                      // Fallback to simulation if RichAds SDK fails
                      console.warn("RichAds SDK not ready or showAd not found. Using simulation.");
                      
-                     let remaining = 5; // Shorter 5-second simulation for fallback
+                     let remaining = 1; // Shorter 1-second simulation for fallback
                      adCountdownTextEl.textContent = `Time remaining: ${remaining}s`;
 
                      const countdownInterval = setInterval(() => {
