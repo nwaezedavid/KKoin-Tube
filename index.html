@@ -544,21 +544,22 @@
         async function initTelemetree(uid) {
             try {
                 if (typeof window.telemetree !== 'undefined') {
-                    // FIX: The telemetree() function returns the pixel object directly.
-                    // We must await this, as it's an async operation.
+                    // FIX: Set trackGroup to false to disable automatic tracking
                     TelemetreePixel = await telemetree({
                         projectId: "189ea164-4e5c-4055-bb8d-0972f604679e",
                         apiKey: "c6968991-8a2b-4d45-8d11-a4a2da3bdf41",
                         isTelegramContext: true,
                         logLevel: 'info',
-                        trackGroup: "medium"
+                        trackGroup: false // Disable automatic session/pageView tracking
                     });
                     
-                    // FIX: REMOVED the manual pageView track.
-                    // The SDK with `isTelegramContext: true` will handle the
-                    // initial "Session start" and "Pageview" automatically once
-                    // the Telegram user context is loaded.
-                    console.log("Telemetree Analytics Initialized.");
+                    // FIX: Manually track session and initial page view AFTER await
+                    // This ensures the user context is ready before we track.
+                    TelemetreePixel.track("sessionStart");
+                    TelemetreePixel.track("pageView", {
+                        page: "dashboard" // Default page
+                    });
+                    console.log("Telemetree Analytics Initialized and Manually Tracked Session/Page.");
                     
                 } else {
                     console.warn("Telemetree SDK (telemetree-pixel.js) not found. Analytics will be skipped.");
