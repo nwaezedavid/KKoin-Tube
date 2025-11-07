@@ -22,7 +22,7 @@
     <!-- 3. Analytics SDKs -->
     <script src="https://s3.eu-central-1.amazonaws.com/cdn.telemetree.io/telemetree-pixel.js"></script>
     
-    <!-- FIX: Moved tganalytics.xyz init function to the global scope in the <head> -->
+    <!-- FIX: Move tganalytics.xyz init function to the global scope in the <head> -->
     <script>
         // This function is now in the global scope and can be found by the `onload` attribute
         window.initAnalytics = () => {
@@ -222,6 +222,14 @@
                     </a>
                 </div>
             </div>
+            
+            <!-- "Add to Home Screen" Button (Moved from footer) -->
+            <div class="pt-4 border-t">
+                 <button id="add-to-home-btn" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-4 rounded-lg transition duration-150 flex items-center justify-center space-x-2">
+                     <i data-lucide="plus-square" class="w-5 h-5"></i>
+                    <span>Add to Home Screen</span>
+                </button>
+            </div>
         </section>
         
         <footer class="pt-2 border-t text-center space-y-2">
@@ -234,11 +242,8 @@
                 
                 <p class="text-xs text-gray-400">ID: <span id="user-id-display">Loading...</span></p>
                
-                <!-- Add to Home Screen Button -->
-                <button id="add-to-home-btn" class="text-xs text-gray-400 hover:text-blue-600 hover:underline flex items-center space-x-1">
-                     <i data-lucide="plus-square" class="w-3 h-3"></i>
-                    <span>Add to Home</span>
-                </button>
+                <!-- "Add to Home" button removed from here -->
+                <div class="w-16"></div> <!-- Empty div for spacing -->
             </div>
             
             <!-- Adsgram Banner Ad Slot (Replaced Monetag) -->
@@ -311,6 +316,27 @@
             </div>
         </div>
     </div>
+
+
+    <!-- FIX: Move tganalytics.xyz init function to the global scope -->
+    <script>
+        // This function is now in the global scope and can be found by the `onload` attribute
+        window.initAnalytics = () => {
+            try {
+                if (typeof window.telegramAnalytics !== 'undefined') {
+                    window.telegramAnalytics.init({
+                        token: 'eyJhcHBfbmFtZSI6Imtrb2luX3R1YmUiLCJhcHBfdXJsIjoiaHR0cHM6Ly90Lm1lL0trb2luVHViZUFwcEJvdCIsImFwcF9kb21haW4iOiJodHRwczovL253YWV6ZWRhdmlkLmdpdGh1Yi5pby9LS29pbi1UdWJlLyJ9!drgHNdJF1sxf9B/l1vtUY2oTWvBeTTSyVJlpvWLCfRs=',
+                        appName: 'kkoin_tube', // Use a simple identifier
+                    });
+                    console.log("TG Analytics SDK (tganalytics.xyz) Initialized.");
+                } else {
+                    console.warn("TG Analytics (tganalytics.xyz) SDK not found.");
+                }
+            } catch (e) {
+                console.error("TG Analytics init error:", e);
+            }
+        };
+    </script>
 
     <!-- Firebase Imports -->
     <script type="module">
