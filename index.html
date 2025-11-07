@@ -19,7 +19,10 @@
     <!-- Monetag SDK (Monetag - Network B) -->
     <script src='//libtl.com/sdk.js' data-zone='10143671' data-sdk='show_10143671'></script>
     
-    <!-- 3. Load Tailwind CSS -->
+    <!-- 3. Telemetree Analytics SDK -->
+    <script src="https://s3.eu-central-1.amazonaws.com/cdn.telemetree.io/telemetree-pixel.js"></script>
+
+    <!-- 4. Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Load Inter font -->
     <style>
@@ -320,6 +323,7 @@
 
         let app, db, auth, userId = null;
         let AdsgramController = null; // Controller for Adsgram SDK
+        let telemetree; // Telemetree instance
 
         let userData = {
             kkoinPoints: 0,
@@ -485,6 +489,34 @@
                 console.warn("RichAds SDK (tg-ob.js) not found or no .initialize method. RichAds will be skipped.");
             }
         }
+        
+        // --- TELEMETREE ANALYTICS INIT ---
+        function initTelemetree(uid) {
+            if (typeof telemetree === 'undefined') {
+                console.warn("Telemetree SDK (telemetree-pixel.js) not found.");
+                return;
+            }
+            
+            try {
+                const telemetreeBuilder = telemetree({
+                    projectId: "189ea164-4e5c-4055-bb8d-0972f604679e",
+                    apiKey: "c6968991-8a2b-4d45-8d11-a4a2da3bdf41",
+                    isTelegramContext: true,
+                    logLevel: 'info', 
+                    trackGroup: "medium"
+                });
+
+                // Pass the unique Firebase user ID to Telemetree
+                telemetree = telemetreeBuilder.build(uid);
+                
+                // Track the initial page view
+                telemetree.track("pageView");
+                console.log("Telemetree Analytics Initialized and pageView tracked.");
+
+            } catch (error) {
+                console.error("Telemetree initialization failed:", error);
+            }
+        }
 
         // --- NAVIGATION/ROUTING ---
         function navigateTo(pageId) {
@@ -505,6 +537,11 @@
                 }
             });
             lucide.createIcons();
+            
+            // Track page navigation in Telemetree
+            if (telemetree) {
+                telemetree.track("pageView", { page: pageId });
+            }
         }
 
         // --- FIREBASE SETUP & AUTHENTICATION ---
@@ -530,6 +567,7 @@
                         setupUserListener(userId); 
                         initAdsgramController(userId);
                         initRichAdsController(userId);
+                        initTelemetree(userId); // Initialize Telemetree with the user ID
                         lucide.createIcons();
                     } else {
                         await signInAnonymously(auth);
@@ -686,6 +724,12 @@
                     userData.referrerId = referrerId;
                     referrerInfoEl.classList.remove('hidden');
                     referrerIdDisplayEl.textContent = userData.referrerId;
+                    
+                    // 4. Track referral in Telemetree
+                    if(telemetree) {
+                        telemetree.track("referralComplete", { referrer: referrerId });
+                    }
+
                 }
             } catch (error) {
                 console.error("Error processing referral event:", error);
@@ -835,7 +879,9 @@
 
         function adLoadFailed(networkName, reason = 'failed to load') {
             console.warn(`Ad from ${networkName} ${reason}.`);
-            // We don't show a modal, just log it. The waterfall will handle the next step.
+            if (telemetree) {
+                telemetree.track("adLoadFailed", { network: networkName, reason: reason });
+            }
         }
         
         // --- AD NETWORK LOADERS (PROMISE-BASED) ---
@@ -855,6 +901,8 @@
                      console.error("Adsgram init error on rotation:", e);
                      return reject(e);
                 }
+                
+                if (telemetree) telemetree.track("adLoadAttempt", { network: "Adsgram" });
                 
                 AdsgramController.showRewardedAd()
                     .then(() => {
@@ -881,6 +929,8 @@
                 let adPromise;
                 
                 try {
+                    if (telemetree) telemetree.track("adLoadAttempt", { network: "Monetag", format: currentConfig.format });
+
                     if (currentConfig.format === 'interstitial') {
                         adPromise = showAdFunction();
                     } else if (currentConfig.format === 'pop') {
@@ -888,8 +938,6 @@
                     } else if (currentConfig.format === 'inApp') {
                         // Non-rewarded In-app Interstitial
                         showAdFunction({ type: 'inApp', inAppSettings: currentConfig.inAppSettings });
-                        // This format is "fire and forget" and non-rewarded.
-                        // We resolve immediately but with a "null" result to indicate no points.
                         resolve(null); 
                         return;
                     } else {
@@ -901,7 +949,7 @@
                         if (currentConfig.type === 'rewarded') {
                             resolve(adResult); // Success: Ad watched
                         } else {
-                            resolve(null); // Non-rewarded (shouldn't happen here, but safe)
+                            resolve(null); // Non-rewarded
                         }
                     }).catch(e => {
                         reject(new Error(`Monetag ${currentConfig.format} ad error: ${e.message || 'Ad skipped or failed'}`));
@@ -915,6 +963,8 @@
         
         function loadRichAds(adResult) {
             return new Promise((resolve, reject) => {
+                if (telemetree) telemetree.track("adLoadAttempt", { network: "RichAds" });
+                
                 // Use a 1-second simulation as RichAds SDK is not fully integrated with callbacks
                 console.warn("RichAds SDK: Using 1-second simulation.");
                 
@@ -938,6 +988,8 @@
             watchAdBtn.disabled = true;
             adMessageEl.textContent = "Loading ad...";
             adDebugEl.classList.add('hidden');
+            
+            if (telemetree) telemetree.track("watchAdClicked");
 
             // NEW: Fixed order. Monetag (B) first, then Adsgram (A), then RichAds (C)
             const networkOrder = [
@@ -947,8 +999,9 @@
             ];
             
             let adResult = null;
+            let networkConfig;
 
-            for (const networkConfig of networkOrder) {
+            for (networkConfig of networkOrder) {
                 const calculatedAdResult = calculateAdPoints(networkConfig);
                 
                 showAdModal(networkConfig.name);
@@ -962,19 +1015,16 @@
                         )
                     ]);
                     
-                    // `result` will be `null` if the ad was non-rewarded (like Monetag In-App)
                     if (result) {
                         adResult = result;
                         break; // SUCCESS! Exit the loop.
                     } else {
-                        // Ad was non-rewarded, hide modal and consider it "finished"
                         console.log(`${networkConfig.name} was non-rewarded. Skipping reward.`);
                         hideAdModal();
-                        // We break here because an ad *did* show. We don't want to waterfall.
-                        // But we also need to update the `lastAdWatch` time
                         await updateDoc(getUserDocRef(userId), { lastAdWatch: Date.now() });
                         updateAdButtonState();
-                        return; // Exit function
+                        if (telemetree) telemetree.track("adViewCompleted", { network: networkConfig.name, rewarded: false });
+                        return; 
                     }
 
                 } catch (error) {
@@ -986,12 +1036,14 @@
             // Loop finished. Check if we have a successful ad result.
             if (adResult) {
                 await finishAdWatch(adResult);
+                if (telemetree) telemetree.track("adViewCompleted", { network: adResult.network, rewarded: true, points: adResult.points });
             } else {
                 // All networks in the waterfall failed
                 showStatus("All ad networks are busy. Please try again in a moment.", 'error');
                 hideAdModal();
                 watchAdBtn.disabled = false; // Re-enable button manually
                 updateAdButtonState();
+                if (telemetree) telemetree.track("adWaterfallFailed");
             }
         }
 
@@ -1085,7 +1137,6 @@
 
             const wallet = modalTargetWalletEl.textContent;
             
-            // Final check on points and wallet format
             if (userData.kkoinPoints < MIN_CONVERSION_POINTS || userData.totalReferrals < MIN_REFERRALS_FOR_WITHDRAWAL || !/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(wallet)) {
                 walletErrorEl.textContent = "Withdrawal failed: Minimum requirements not met.";
                 walletErrorEl.classList.remove('hidden');
@@ -1102,12 +1153,15 @@
                     walletAddress: wallet
                 });
                 
+                if(telemetree) telemetree.track("withdrawalSuccess", { amount: pointsToDeduct });
+
                 closeWithdrawalModal();
                 showStatus(`Withdrawal request for $10.00 USDT submitted to ${wallet}. Processing may take 24-48 hours.`, 'success');
 
             } catch (error) {
                 console.error("Error during withdrawal:", error);
                 showStatus("Withdrawal failed due to a database error.", 'error');
+                if(telemetree) telemetree.track("withdrawalFailed", { error: error.message });
             } finally {
                 submitWithdrawalBtn.disabled = false;
             }
@@ -1142,6 +1196,7 @@
                 default:
                     return;
             }
+            if(telemetree) telemetree.track("socialShare", { platform: platform });
             window.open(url, '_blank');
         }
 
@@ -1194,6 +1249,7 @@
 
         // Manual Refresh Button Listener
         refreshBtn.addEventListener('click', () => {
+            if (telemetree) telemetree.track("manualRefresh");
             location.reload();
         });
 
@@ -1208,6 +1264,7 @@
                 document.body.removeChild(textArea);
                 
                 showStatus("Referral link copied to clipboard!", 'success');
+                if(telemetree) telemetree.track("referralLinkCopied");
             } catch (err) {
                 showStatus("Failed to copy link.", 'error');
             }
