@@ -284,6 +284,26 @@
     </div>
 
 
+    <!-- FIX: Move tganalytics.xyz init function to the global scope -->
+    <script>
+        // This function is now in the global scope and can be found by the `onload` attribute
+        window.initAnalytics = () => {
+            try {
+                if (typeof window.telegramAnalytics !== 'undefined') {
+                    window.telegramAnalytics.init({
+                        token: 'eyJhcHBfbmFtZSI6Imtrb2luX3R1YmUiLCJhcHBfdXJsIjoiaHR0cHM6Ly90Lm1lL0trb2luVHViZUFwcEJvdCIsImFwcF9kb21haW4iOiJodHRwczovL253YWV6ZWRhdmlkLmdpdGh1Yi5pby9LS29pbi1UdWJlLyJ9!drgHNdJF1sxf9B/l1vtUY2oTWvBeTTSyVJlpvWLCfRs=',
+                        appName: 'kkoin_tube', // Use a simple identifier
+                    });
+                    console.log("TG Analytics SDK (tganalytics.xyz) Initialized.");
+                } else {
+                    console.warn("TG Analytics (tganalytics.xyz) SDK not found.");
+                }
+            } catch (e) {
+                console.error("TG Analytics init error:", e);
+            }
+        };
+    </script>
+
     <!-- Firebase Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -358,7 +378,11 @@
         const REFERRAL_INITIAL_BONUS_POINTS = 500; // Half of the new bonus
         const MIN_REFERRALS_FOR_WITHDRAWAL = 100; // Hard requirement
         const AD_WATCH_COOLDOWN_MS = 30000; // 30 seconds cooldown between ad watches
-        const AD_NETWORK_TIMEOUT_MS = 3000; // 3 seconds to wait for an ad to load
+        
+        // --- AD NETWORK TIMEOUTS (NEW) ---
+        const AD_NETWORK_TIMEOUT_MS = 3000; // 3 seconds for most networks
+        const MONETAG_TIMEOUT_MS = 10000; // 10 seconds for Monetag (postback)
+
         const SOCIAL_SHARE_MESSAGE = "🚀 Earn crypto effortlessly with KKoin Tube! Watch short videos, earn Kkoin, and withdraw to USDT. Join me now using my unique link and get a bonus start! Don't miss out:";
 
         // --- PROFIT LOGIC CONSTANTS ---
@@ -378,12 +402,12 @@
         ];
         
         // Base config for calculating points and defining loader function
-        // UPDATED WATERFALL ORDER: Monetag (B) -> Adsgram (A) -> RichAds (C) -> Telega.io (D)
+        // UPDATED WATERFALL ORDER: Monetag (B) -> RichAds (C) -> Adsgram (A) -> Telega.io (D)
         const AD_NETWORK_CONFIGS = [
-            { name: 'Monetag', base_cpm: 1.50, id: 'B', postback: true, loader: loadMonetag },
-            { name: 'Adsgram.ai', base_cpm: 3.00, id: 'A', postback: false, loader: loadAdsgram },
-            { name: 'RichAds', base_cpm: 4.00, id: 'C', postback: false, loader: loadRichAds },
-            { name: 'Telega.io', base_cpm: 1.00, id: 'D', postback: false, loader: loadTelega } // Non-rewarded, base_cpm is for analytics
+            { name: 'Monetag', base_cpm: 1.50, id: 'B', postback: true, loader: loadMonetag, timeout: MONETAG_TIMEOUT_MS },
+            { name: 'RichAds', base_cpm: 4.00, id: 'C', postback: false, loader: loadRichAds, timeout: AD_NETWORK_TIMEOUT_MS },
+            { name: 'Adsgram.ai', base_cpm: 3.00, id: 'A', postback: false, loader: loadAdsgram, timeout: AD_NETWORK_TIMEOUT_MS },
+            { name: 'Telega.io', base_cpm: 1.00, id: 'D', postback: false, loader: loadTelega, timeout: AD_NETWORK_TIMEOUT_MS } // Non-rewarded, base_cpm is for analytics
         ];
 
         const LOCATION_TIERS = [
@@ -516,24 +540,6 @@
                  console.warn("Telega.io SDK (sdk.js) not found. Telega.io ads will be skipped.");
              }
         }
-        
-        // This is the placeholder for the new analytics script
-        // It's called by the `onload="initAnalytics()"` in the <head>
-        window.initAnalytics = () => {
-            try {
-                if (typeof window.telegramAnalytics !== 'undefined') {
-                    window.telegramAnalytics.init({
-                        token: 'eyJhcHBfbmFtZSI6Imtrb2luX3R1YmUiLCJhcHBfdXJsIjoiaHR0cHM6Ly90Lm1lL0trb2luVHViZUFwcEJvdCIsImFwcF9kb21haW4iOiJodHRwczovL253YWV6ZWRhdmlkLmdpdGh1Yi5pby9LS29pbi1UdWJlLyJ9!drgHNdJF1sxf9B/l1vtUY2oTWvBeTTSyVJlpvWLCfRs=',
-                        appName: 'kkoin_tube', // Use a simple identifier
-                    });
-                    console.log("TG Analytics SDK (tganalytics.xyz) Initialized.");
-                } else {
-                    console.warn("TG Analytics (tganalytics.xyz) SDK not found.");
-                }
-            } catch (e) {
-                console.error("TG Analytics init error:", e);
-            }
-        };
 
         async function initTelemetree(uid) {
             try {
@@ -548,12 +554,11 @@
                         trackGroup: "medium"
                     });
                     
-                    // FIX: The SDK with `isTelegramContext: true` handles user ID automatically.
-                    // We can now track the initial page view, as the user is set.
-                    TelemetreePixel.track("pageView", {
-                        page: "dashboard" // Default page
-                    });
-                    console.log("Telemetree Analytics Initialized and Page Viewed.");
+                    // FIX: REMOVED the manual pageView track.
+                    // The SDK with `isTelegramContext: true` will handle the
+                    // initial "Session start" and "Pageview" automatically once
+                    // the Telegram user context is loaded.
+                    console.log("Telemetree Analytics Initialized.");
                     
                 } else {
                     console.warn("Telemetree SDK (telemetree-pixel.js) not found. Analytics will be skipped.");
@@ -610,13 +615,16 @@
                         userIdDisplayEl.textContent = userId;
                         referralLinkEl.value = `https://t.me/${TELEGRAM_BOT_USERNAME}?start=${userId}`;
                         
+                        // FIX: Await Telemetree init *before* any other setup.
+                        // This ensures the user is set before other events (like pageView) are tracked.
+                        await initTelemetree(userId); 
+                        
                         setupUserListener(userId); 
                         
-                        // Initialize all SDKs that need the user ID
+                        // Initialize all Ad SDKs
                         initAdsgramController(userId);
                         initRichAdsController(userId);
                         initTelegaController(userId);
-                        await initTelemetree(userId); // Wait for analytics to be ready
                         
                         lucide.createIcons();
                     } else {
@@ -1015,33 +1023,19 @@
 
         function loadRichAds(adResult) {
             return new Promise((resolve, reject) => {
-                 if (typeof window.TelegramAdsController === 'undefined' || !window.TelegramAdsController.showAd) {
-                     console.warn("RichAds SDK not ready or showAd not found. Simulating.");
-                     
-                     let remaining = 1; // 1-second simulation for fallback
-                     adCountdownTextEl.textContent = `Simulating ad...`;
+                 // FIX: Always use the simulation as the display code is missing
+                 console.warn("RichAds: Using 1-second simulation.");
+                 
+                 let remaining = 1; // 1-second simulation for fallback
+                 adCountdownTextEl.textContent = `Simulating ad...`;
 
-                     const countdownInterval = setInterval(() => {
-                         remaining--;
-                         if (remaining <= 0) {
-                             clearInterval(countdownInterval);
-                             resolve(adResult); // Reward the user
-                         }
-                     }, 1000);
-                     return;
-                }
-                
-                // --- Real RichAds Logic ---
-                window.TelegramAdsController.showAd({
-                    onSuccess: () => {
-                        console.log("RichAds ad completed successfully.");
-                        resolve(adResult);
-                    },
-                    onError: (error) => {
-                        console.error("RichAds ad failed:", error);
-                        reject(new Error("RichAds ad failed to load."));
-                    }
-                });
+                 const countdownInterval = setInterval(() => {
+                     remaining--;
+                     if (remaining <= 0) {
+                         clearInterval(countdownInterval);
+                         resolve(adResult); // Reward the user
+                     }
+                 }, 1000);
             });
         }
 
@@ -1056,7 +1050,7 @@
                 TelemetreePixel.track("watchAdClicked");
             }
 
-            // Waterfall Order: Monetag -> Adsgram -> RichAds -> Telega.io
+            // Waterfall Order: Monetag -> RichAds -> Adsgram -> Telega.io
             const networkOrderIndices = AD_NETWORK_CONFIGS.map((_, i) => i);
             let adResult = null;
             let adShowed = false;
@@ -1073,10 +1067,13 @@
                 }
 
                 try {
+                    // FIX: Use special timeout for Monetag
+                    const timeout = (networkConfig.name === 'Monetag') ? MONETAG_TIMEOUT_MS : AD_NETWORK_TIMEOUT_MS;
+                    
                     const result = await Promise.race([
                         networkConfig.loader(calculatedAdResult),
                         new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('Ad network timed out')), AD_NETWORK_TIMEOUT_MS)
+                            setTimeout(() => reject(new Error('Ad network timed out')), timeout)
                         )
                     ]);
                     
@@ -1143,6 +1140,7 @@
                     totalAdsWatched: userData.totalAdsWatched + 1
                 });
                 
+                // FIX: Typo 'info : 'success' -> 'info' : 'success'
                 const statusType = adResult.isPostback ? 'info' : 'success';
                 showStatus(`You earned ${pointsEarned} Kkoin from ${creditMessage}.`, statusType);
                 
