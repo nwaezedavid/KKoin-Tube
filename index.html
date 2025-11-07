@@ -371,6 +371,7 @@
         ];
         
         // Base config for calculating points and defining loader function
+        // UPDATED WATERFALL ORDER: Monetag (B) -> Adsgram (A) -> RichAds (C) -> Telega.io (D)
         const AD_NETWORK_CONFIGS = [
             { name: 'Monetag', base_cpm: 1.50, id: 'B', postback: true, loader: loadMonetag },
             { name: 'Adsgram.ai', base_cpm: 3.00, id: 'A', postback: false, loader: loadAdsgram },
@@ -509,11 +510,12 @@
              }
         }
         
-        function initTelemetree(uid) {
+        async function initTelemetree(uid) {
             try {
                 if (typeof window.telemetree !== 'undefined') {
-                    // FIX: The telemetree() function returns the pixel object directly. .build() is not a function.
-                    TelemetreePixel = telemetree({
+                    // FIX: The telemetree() function returns the pixel object directly.
+                    // We must await this, as it's an async operation.
+                    TelemetreePixel = await telemetree({
                         projectId: "189ea164-4e5c-4055-bb8d-0972f604679e",
                         apiKey: "c6968991-8a2b-4d45-8d11-a4a2da3bdf41",
                         isTelegramContext: true,
@@ -521,11 +523,8 @@
                         trackGroup: "medium"
                     });
                     
-                    // FIX: Changed .setUser to .setUserId(). This is another common analytics method name.
-                    // This fixes the TypeError and should resolve the "user is not set" errors.
-                    TelemetreePixel.setUserId(uid);
-                    
-                    // Track the initial page view AFTER identifying
+                    // FIX: The SDK with `isTelegramContext: true` handles user ID automatically.
+                    // We can now track the initial page view, as the user is set.
                     TelemetreePixel.track("pageView", {
                         page: "dashboard" // Default page
                     });
@@ -592,7 +591,7 @@
                         initAdsgramController(userId);
                         initRichAdsController(userId);
                         initTelegaController(userId);
-                        initTelemetree(userId);
+                        await initTelemetree(userId); // Wait for analytics to be ready
                         
                         lucide.createIcons();
                     } else {
