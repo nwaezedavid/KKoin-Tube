@@ -8,20 +8,18 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
     <!-- 2. Ad Network SDKs -->
-    <!-- RichAds SDK (RichAds - Network C) -->
+    <!-- RichAds SDK (Network C) -->
     <script src="https://richinfo.co/richpartners/telegram/js/tg-ob.js"></script>
-    <script>
-        // RichAds Initialization (Network C)
-        // We assume TelegramAdsController is globally available from the script above
-    </script>
-    <!-- Adsgram SDK (Adsgram.ai - Network A) -->
+    <!-- Adsgram SDK (Network A) -->
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
-    <!-- Monetag SDK (Monetag - Network B) -->
+    <!-- Monetag SDK (Network B) -->
     <script src='//libtl.com/sdk.js' data-zone='10143671' data-sdk='show_10143671'></script>
-    
-    <!-- 3. Telemetree Analytics SDK -->
-    <script src="https://s3.eu-central-1.amazonaws.com/cdn.telemetree.io/telemetree-pixel.js"></script>
+    <!-- Telega.io SDK (Network D) -->
+    <script src="https://inapp.telega.io/sdk/v1/sdk.js"></script>
 
+    <!-- 3. Analytics SDK -->
+    <script src="https://s3.eu-central-1.amazonaws.com/cdn.telemetree.io/telemetree-pixel.js"></script>
+    
     <!-- 4. Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Load Inter font -->
@@ -29,7 +27,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body { font-family: 'Inter', sans-serif; }
     </style>
-    <!-- Lucide Icons for social sharing -->
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-start justify-center p-4">
@@ -83,12 +81,17 @@
 
                 <!-- MONETAG AD SLOT -->
                 <div id="monetag-ad-slot" class="p-3 border-2 border-dashed border-gray-300 rounded-lg text-center text-xs text-gray-500">
-                    Monetag Ad Placement (Points via Postback)
+                    Monetag Ad Placement
                 </div>
                 
                 <!-- RICHADS AD SLOT -->
                 <div id="richads-ad-slot" class="p-3 border-2 border-dashed border-gray-300 rounded-lg text-center text-xs text-gray-500">
                     RichAds Ad Placement
+                </div>
+                
+                <!-- TELEGA.IO AD SLOT -->
+                <div id="telega-ad-slot" class="p-3 border-2 border-dashed border-gray-300 rounded-lg text-center text-xs text-gray-500">
+                    Telega.io Ad Placement
                 </div>
 
                 <p class="text-xs text-red-500 text-center">NOTE: Actual ad codes must be integrated and fire a success callback for points to be awarded.</p>
@@ -192,17 +195,19 @@
             </div>
         </section>
         
-        <footer class="pt-2 border-t text-center space-y-2">
-            <div class="flex justify-between items-center">
-                <p class="text-xs text-gray-400">User ID: <span id="user-id-display">Loading...</span></p>
-                <!-- Manual Refresh Button -->
-                <button id="refresh-btn" class="text-gray-400 hover:text-blue-500 transition duration-150" title="Refresh App">
-                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                </button>
-            </div>
+        <footer class="pt-2 border-t text-center space-y-2 flex justify-between items-center">
+             <!-- Refresh Button -->
+            <button id="refresh-btn" class="text-xs text-gray-400 hover:text-blue-600 hover:underline flex items-center space-x-1">
+                <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+                <span>Refresh</span>
+            </button>
+            
+            <p class="text-xs text-gray-400">ID: <span id="user-id-display">Loading...</span></p>
+           
             <!-- Add to Home Screen Button -->
-            <button id="add-to-home-btn" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">
-                Add to Home Screen
+            <button id="add-to-home-btn" class="text-xs text-gray-400 hover:text-blue-600 hover:underline flex items-center space-x-1">
+                 <i data-lucide="plus-square" class="w-3 h-3"></i>
+                <span>Add to Home</span>
             </button>
         </footer>
 
@@ -323,7 +328,8 @@
 
         let app, db, auth, userId = null;
         let AdsgramController = null; // Controller for Adsgram SDK
-        let telemetree; // Telemetree instance
+        let TelegaAdsController = null; // Controller for Telega.io SDK
+        let TelemetreePixel = null; // Controller for Telemetree Analytics
 
         let userData = {
             kkoinPoints: 0,
@@ -360,13 +366,16 @@
             { id: 10143671, format: 'pop', type: 'rewarded' },          // Rewarded Popup
             { id: 10143671, format: 'inApp', type: 'non-rewarded', inAppSettings: { frequency: 2, capping: 0.1, interval: 30, timeout: 5, everyPage: false } } // In-app Interstitial (Non-rewarded)
         ];
+        const TELEGA_CONFIGS = [
+            { adBlockUuid: "539bda18-3512-4c8f-9bd3-07224427af90", type: 'non-rewarded' } // Telega.io (Non-rewarded)
+        ];
         
-        // Base config for calculating points
-        // UPDATED ORDER: Monetag (B) is now first, followed by Adsgram (A), then RichAds (C)
+        // Base config for calculating points and defining loader function
         const AD_NETWORK_CONFIGS = [
             { name: 'Monetag', base_cpm: 1.50, id: 'B', postback: true, loader: loadMonetag },
             { name: 'Adsgram.ai', base_cpm: 3.00, id: 'A', postback: false, loader: loadAdsgram },
-            { name: 'RichAds', base_cpm: 4.00, id: 'C', postback: false, loader: loadRichAds }
+            { name: 'RichAds', base_cpm: 4.00, id: 'C', postback: false, loader: loadRichAds },
+            { name: 'Telega.io', base_cpm: 1.00, id: 'D', postback: false, loader: loadTelega } // Non-rewarded, base_cpm is for analytics
         ];
 
         const LOCATION_TIERS = [
@@ -388,9 +397,6 @@
         const adDebugEl = document.getElementById('ad-debug');
         const debugNetworkEl = document.getElementById('debug-network');
         const debugLocationEl = document.getElementById('debug-location');
-        const adsgramAdSlotEl = document.getElementById('adsgram-ad-slot');
-        const monetagAdSlotEl = document.getElementById('monetag-ad-slot');
-        const richadsAdSlotEl = document.getElementById('richads-ad-slot');
 
         // Referral Page
         const referralLinkEl = document.getElementById('referral-link');
@@ -408,9 +414,8 @@
         const walletAddressStatusEl = document.getElementById('wallet-address-status');
         const withdrawalMinInfoEl = document.getElementById('withdrawal-min-info');
         
-        // Modals & Footer
+        // Modals
         const userIdDisplayEl = document.getElementById('user-id-display');
-        const refreshBtn = document.getElementById('refresh-btn'); // Manual Refresh Button
         const withdrawalModal = document.getElementById('withdrawal-modal');
         const closeWithdrawalModalBtn = document.getElementById('close-withdrawal-modal');
         const withdrawalForm = document.getElementById('withdrawal-form');
@@ -425,6 +430,9 @@
         const homeScreenModal = document.getElementById('home-screen-modal');
         const addToHomeBtn = document.getElementById('add-to-home-btn');
         const closeHomeScreenModalBtn = document.getElementById('close-home-screen-modal');
+        
+        // Footer
+        const refreshBtn = document.getElementById('refresh-btn');
 
 
         // --- FIREBASE PATHS ---
@@ -468,9 +476,9 @@
             setTimeout(() => statusMessageEl.classList.add('hidden'), duration);
         }
 
-        // --- AD NETWORK INITIALIZATION ---
+        // --- AD & ANALYTICS INITIALIZATION ---
         function initAdsgramController(uid) {
-             if (typeof window.Adsgram !== 'undefined') {
+             if (typeof window.Adsgram !== 'undefined' && window.Adsgram.init) {
                 AdsgramController = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_IDS[0] }); // Init with first ID
                 console.log("Adsgram Controller Initialized.");
              } else {
@@ -490,29 +498,42 @@
             }
         }
         
-        // --- TELEMETREE ANALYTICS INIT ---
-        function initTelemetree(uid) {
-            if (typeof telemetree === 'undefined') {
-                console.warn("Telemetree SDK (telemetree-pixel.js) not found.");
-                return;
-            }
-            
-            try {
-                const telemetreeBuilder = telemetree({
-                    projectId: "189ea164-4e5c-4055-bb8d-0972f604679e",
-                    apiKey: "c6968991-8a2b-4d45-8d11-a4a2da3bdf41",
-                    isTelegramContext: true,
-                    logLevel: 'info', 
-                    trackGroup: "medium"
+        function initTelegaController(uid) {
+             if (typeof window.TelegaIn !== 'undefined' && window.TelegaIn.AdsController) {
+                TelegaAdsController = window.TelegaIn.AdsController.create_miniapp({
+                    token: '5068c649-7b34-4130-9a0c-393767f9d9dc' 
                 });
-
-                // Pass the unique Firebase user ID to Telemetree
-                telemetree = telemetreeBuilder.build(uid);
-                
-                // Track the initial page view
-                telemetree.track("pageView");
-                console.log("Telemetree Analytics Initialized and pageView tracked.");
-
+                console.log("Telega.io Controller Initialized.");
+             } else {
+                 console.warn("Telega.io SDK (sdk.js) not found. Telega.io ads will be skipped.");
+             }
+        }
+        
+        function initTelemetree(uid) {
+            try {
+                if (typeof window.telemetree !== 'undefined') {
+                    // FIX: The telemetree() function returns the pixel object directly. .build() is not a function.
+                    TelemetreePixel = telemetree({
+                        projectId: "189ea164-4e5c-4055-bb8d-0972f604679e",
+                        apiKey: "c6968991-8a2b-4d45-8d11-a4a2da3bdf41",
+                        isTelegramContext: true,
+                        logLevel: 'info',
+                        trackGroup: "medium"
+                    });
+                    
+                    // FIX: Changed .setUser to .setUserId(). This is another common analytics method name.
+                    // This fixes the TypeError and should resolve the "user is not set" errors.
+                    TelemetreePixel.setUserId(uid);
+                    
+                    // Track the initial page view AFTER identifying
+                    TelemetreePixel.track("pageView", {
+                        page: "dashboard" // Default page
+                    });
+                    console.log("Telemetree Analytics Initialized and Page Viewed.");
+                    
+                } else {
+                    console.warn("Telemetree SDK (telemetree-pixel.js) not found. Analytics will be skipped.");
+                }
             } catch (error) {
                 console.error("Telemetree initialization failed:", error);
             }
@@ -536,12 +557,15 @@
                     btn.classList.remove('text-gray-500', 'border-transparent');
                 }
             });
-            lucide.createIcons();
             
-            // Track page navigation in Telemetree
-            if (telemetree) {
-                telemetree.track("pageView", { page: pageId });
+            // Track page view in analytics
+            if (TelemetreePixel) {
+                TelemetreePixel.track("pageView", {
+                    page: pageId
+                });
             }
+            
+            lucide.createIcons();
         }
 
         // --- FIREBASE SETUP & AUTHENTICATION ---
@@ -560,14 +584,16 @@
                     if (user) {
                         userId = user.uid;
                         userIdDisplayEl.textContent = userId;
-                        // Corrected referral link generation
                         referralLinkEl.value = `https://t.me/${TELEGRAM_BOT_USERNAME}?start=${userId}`;
                         
-                        // Setup listener FIRST, then check referral
                         setupUserListener(userId); 
+                        
+                        // Initialize all SDKs that need the user ID
                         initAdsgramController(userId);
                         initRichAdsController(userId);
-                        initTelemetree(userId); // Initialize Telemetree with the user ID
+                        initTelegaController(userId);
+                        initTelemetree(userId);
+                        
                         lucide.createIcons();
                     } else {
                         await signInAnonymously(auth);
@@ -584,18 +610,16 @@
 
         function setupUserListener(uid) {
             const userDocRef = getUserDocRef(uid);
-            // Setup a one-time listener for the initial data load
             const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
                 if (docSnap.exists()) {
                     userData = { ...userData, ...docSnap.data() };
                     usdtTrc20PageInput.value = userData.walletAddress || '';
                     updateDashboard();
                 } else {
-                    // Create new user document
                     setDoc(userDocRef, {
                         kkoinPoints: 0,
                         walletAddress: '',
-                        referrerId: userData.referrerId, // This will be null unless set by checkInitialReferral
+                        referrerId: userData.referrerId,
                         lastAdWatch: 0,
                         totalAdsWatched: 0,
                         hasReceivedInitialBonus: false
@@ -608,15 +632,8 @@
                     });
                 }
                 
-                // --- REFERRAL CHECK (MOVED) ---
-                // Now that we have the user's data (or know they are new), check for a referral.
                 checkInitialReferral(uid);
-                
-                // Detach this listener after the first successful load
-                // We will re-attach a permanent listener after
                 unsubscribe();
-                
-                // Attach the permanent listener for real-time updates
                 setupPermanentListeners(uid);
 
             }, (error) => {
@@ -626,18 +643,16 @@
         }
         
         function setupPermanentListeners(uid) {
-            // Permanent listener for user data
              onSnapshot(getUserDocRef(uid), (docSnap) => {
                  if (docSnap.exists()) {
                     userData = { ...userData, ...docSnap.data() };
                     usdtTrc20PageInput.value = userData.walletAddress || '';
-                    updateDashboard(); // Update UI on every change
+                    updateDashboard();
                  }
              }, (error) => {
                  console.error("Error on permanent user listener:", error);
              });
             
-             // Permanent listener for referral count
             const q = query(getReferralEventsRef(), where("referrerId", "==", uid));
             onSnapshot(q, (snapshot) => {
                 userData.totalReferrals = snapshot.docs.length;
@@ -645,7 +660,7 @@
 
                 referralCountDisplayEl.textContent = userData.totalReferrals.toLocaleString();
                 referralEarningsDisplayEl.textContent = userData.totalReferralEarnings.toLocaleString();
-                updateDashboard(); // Update withdrawal button on referral count change
+                updateDashboard();
             }, (error) => {
                 console.error("Error listening to referral events:", error);
             });
@@ -665,33 +680,27 @@
         async function checkInitialReferral(uid) {
             const urlReferrerId = getUrlReferrerId();
             
-            // Only process if a referral ID is in the URL AND the user doesn't already have a referrer
             if (urlReferrerId && !userData.referrerId) {
-                // Set the referrerId on the user's new profile
                 await updateDoc(getUserDocRef(uid), { referrerId: urlReferrerId })
                     .catch(err => console.error("Could not set new user's referrerId:", err));
-                // Log the public event and grant bonuses
                 await logReferralEvent(urlReferrerId, uid);
                 
             } else if (userData.referrerId) {
-                // If referrer is already set, just display the info
                 referrerInfoEl.classList.remove('hidden');
                 referrerIdDisplayEl.textContent = userData.referrerId;
             }
         }
         
         async function logReferralEvent(referrerId, referredId) {
-            if (referrerId === referredId) return; // Can't refer self
+            if (referrerId === referredId) return;
 
             try {
-                // Check if this referral has already been logged
                 const q = query(getReferralEventsRef(), 
                     where("referredId", "==", referredId)
                 );
                 const snapshot = await getDocs(q);
 
                 if (snapshot.empty) {
-                    // 1. Create public referral event document
                     await addDoc(getReferralEventsRef(), {
                         referrerId: referrerId,
                         referredId: referredId,
@@ -700,7 +709,6 @@
                         status: 'claimed'
                     });
 
-                    // 2. Grant bonus to the referrer (transaction for safety)
                     const referrerDocRef = getUserDocRef(referrerId);
                     await runTransaction(db, async (transaction) => {
                         const referrerDoc = await transaction.get(referrerDocRef);
@@ -710,7 +718,6 @@
                         }
                     });
                     
-                    // 3. Grant initial bonus to the referred user (once)
                     if (!userData.hasReceivedInitialBonus) {
                         const referredDocRef = getUserDocRef(referredId);
                         await updateDoc(referredDocRef, { 
@@ -720,14 +727,15 @@
                     }
 
                     showStatus(`Referral successful! You and user ${referrerId} received a bonus.`, 'success');
-                    // Force display of referrer info immediately
                     userData.referrerId = referrerId;
                     referrerInfoEl.classList.remove('hidden');
                     referrerIdDisplayEl.textContent = userData.referrerId;
                     
-                    // 4. Track referral in Telemetree
-                    if(telemetree) {
-                        telemetree.track("referralComplete", { referrer: referrerId });
+                    // Track referral in analytics
+                    if (TelemetreePixel) {
+                        TelemetreePixel.track("referralCompleted", {
+                            referrerId: referrerId
+                        });
                     }
 
                 }
@@ -786,7 +794,6 @@
         }
 
         function updateAdButtonState() {
-            // Check if ad is already loading
             if (watchAdBtn.disabled && adMessageEl.textContent === "Loading ad...") {
                 return;
             }
@@ -802,7 +809,6 @@
                 const remainingTime = Math.ceil((AD_WATCH_COOLDOWN_MS - timeSinceLastWatch) / 1000);
                 adCooldownEl.textContent = `Next ad in: ${remainingTime}s`;
 
-                // Use a self-correcting timer
                 const updateTimer = () => {
                     const now = Date.now();
                     const timeSinceLastWatch = now - userData.lastAdWatch;
@@ -845,9 +851,8 @@
             let finalPoints = Math.floor(calculatedPoints);
             finalPoints = Math.max(finalPoints, MIN_POINTS_PER_AD);
 
-            // Apply smaller random variation
             finalPoints += Math.floor(Math.random() * (POINTS_RANDOM_VARIATION * 2 + 1)) - POINTS_RANDOM_VARIATION;
-            finalPoints = Math.max(finalPoints, MIN_POINTS_PER_AD); // Ensure it's not below min after variation
+            finalPoints = Math.max(finalPoints, MIN_POINTS_PER_AD);
 
             return { 
                 points: finalPoints, 
@@ -865,7 +870,6 @@
             document.getElementById('ad-modal-title').textContent = `Loading Ad from ${networkName}...`;
             currentAdNetworkEl.textContent = networkName;
             adCountdownTextEl.textContent = "Please wait for the ad to start.";
-            // Disable the close button
             document.getElementById('close-ad-modal-btn').disabled = true;
             document.getElementById('close-ad-modal-btn').textContent = "Close (Ad is Active)";
         }
@@ -873,14 +877,16 @@
         function hideAdModal() {
             adModal.classList.add('hidden');
             adModal.classList.remove('flex');
-            // Re-enable the close button for next time
             document.getElementById('close-ad-modal-btn').disabled = false;
         }
 
         function adLoadFailed(networkName, reason = 'failed to load') {
             console.warn(`Ad from ${networkName} ${reason}.`);
-            if (telemetree) {
-                telemetree.track("adLoadFailed", { network: networkName, reason: reason });
+            if (TelemetreePixel) {
+                TelemetreePixel.track("adLoadFailed", {
+                    network: networkName,
+                    reason: reason
+                });
             }
         }
         
@@ -902,14 +908,12 @@
                      return reject(e);
                 }
                 
-                if (telemetree) telemetree.track("adLoadAttempt", { network: "Adsgram" });
-                
                 AdsgramController.showRewardedAd()
                     .then(() => {
                         resolve(adResult); // Success: Ad watched
                     })
                     .catch(e => {
-                        reject(new Error(`Adsgram ad error: ${e.message || 'Ad skipped or failed'}`)); // Failure
+                        reject(new Error(`Adsgram ad error: ${e.message}`)); // Failure
                     });
             });
         }
@@ -918,8 +922,7 @@
             return new Promise((resolve, reject) => {
                 const zoneId = MONETAG_CONFIGS[0].id; 
                 const showAdFunction = window[`show_${zoneId}`];
-                // Cycle through Monetag formats
-                const currentConfigIndex = (userData.totalAdsWatched % MONETAG_CONFIGS.length);
+                const currentConfigIndex = userData.totalAdsWatched % MONETAG_CONFIGS.length;
                 const currentConfig = MONETAG_CONFIGS[currentConfigIndex];
 
                 if (!showAdFunction) {
@@ -929,14 +932,11 @@
                 let adPromise;
                 
                 try {
-                    if (telemetree) telemetree.track("adLoadAttempt", { network: "Monetag", format: currentConfig.format });
-
                     if (currentConfig.format === 'interstitial') {
                         adPromise = showAdFunction();
                     } else if (currentConfig.format === 'pop') {
                         adPromise = showAdFunction('pop');
                     } else if (currentConfig.format === 'inApp') {
-                        // Non-rewarded In-app Interstitial
                         showAdFunction({ type: 'inApp', inAppSettings: currentConfig.inAppSettings });
                         resolve(null); 
                         return;
@@ -944,15 +944,14 @@
                         return reject(new Error("Unknown Monetag format."));
                     }
                     
-                    // Handle Rewarded Ad Promises
                     adPromise.then(() => {
                         if (currentConfig.type === 'rewarded') {
                             resolve(adResult); // Success: Ad watched
                         } else {
-                            resolve(null); // Non-rewarded
+                            resolve(null);
                         }
                     }).catch(e => {
-                        reject(new Error(`Monetag ${currentConfig.format} ad error: ${e.message || 'Ad skipped or failed'}`));
+                        reject(new Error(`Monetag ${currentConfig.format} ad error: ${e.message}`));
                     });
 
                 } catch (e) {
@@ -961,24 +960,64 @@
             });
         }
         
+        function loadTelega(adResult) {
+            return new Promise((resolve, reject) => {
+                if (!TelegaAdsController || !TelegaAdsController.ad_show) {
+                    return reject(new Error("Telega.io SDK not ready."));
+                }
+
+                const adIndex = userData.totalAdsWatched % TELEGA_CONFIGS.length;
+                const currentConfig = TELEGA_CONFIGS[adIndex];
+
+                // --- ASSUMED CALLBACK STRUCTURE ---
+                TelegaAdsController.ad_show({
+                    adBlockUuid: currentConfig.adBlockUuid,
+                    
+                    onSuccess: () => {
+                        console.log("Telega.io ad (non-rewarded) completed successfully.");
+                        // Resolve with 'null' to signal a successful NON-REWARDED ad view.
+                        // This stops the waterfall but will NOT call finishAdWatch (which awards points).
+                        resolve(null);
+                    },
+                    onError: (error) => {
+                        console.error("Telega.io ad failed:", error);
+                        // Reject to allow the waterfall to try the next (if any) ad network.
+                        reject(new Error("Telega.io ad failed to load."));
+                    }
+                });
+                // --- END ASSUMED STRUCTURE ---
+            });
+        }
+
         function loadRichAds(adResult) {
             return new Promise((resolve, reject) => {
-                if (telemetree) telemetree.track("adLoadAttempt", { network: "RichAds" });
-                
-                // Use a 1-second simulation as RichAds SDK is not fully integrated with callbacks
-                console.warn("RichAds SDK: Using 1-second simulation.");
-                
-                let remaining = 1; // 1-second simulation
-                adCountdownTextEl.textContent = `Time remaining: ${remaining}s`;
+                 if (typeof window.TelegramAdsController === 'undefined' || !window.TelegramAdsController.showAd) {
+                     console.warn("RichAds SDK not ready or showAd not found. Simulating.");
+                     
+                     let remaining = 1; // 1-second simulation for fallback
+                     adCountdownTextEl.textContent = `Simulating ad...`;
 
-                const countdownInterval = setInterval(() => {
-                    remaining--;
-                    adCountdownTextEl.textContent = `Time remaining: ${remaining}s`;
-                    if (remaining <= 0) {
-                        clearInterval(countdownInterval);
-                        resolve(adResult); // Reward the user
+                     const countdownInterval = setInterval(() => {
+                         remaining--;
+                         if (remaining <= 0) {
+                             clearInterval(countdownInterval);
+                             resolve(adResult); // Reward the user
+                         }
+                     }, 1000);
+                     return;
+                }
+                
+                // --- Real RichAds Logic ---
+                window.TelegramAdsController.showAd({
+                    onSuccess: () => {
+                        console.log("RichAds ad completed successfully.");
+                        resolve(adResult);
+                    },
+                    onError: (error) => {
+                        console.error("RichAds ad failed:", error);
+                        reject(new Error("RichAds ad failed to load."));
                     }
-                }, 1000);
+                });
             });
         }
 
@@ -989,25 +1028,27 @@
             adMessageEl.textContent = "Loading ad...";
             adDebugEl.classList.add('hidden');
             
-            if (telemetree) telemetree.track("watchAdClicked");
+            if (TelemetreePixel) {
+                TelemetreePixel.track("watchAdClicked");
+            }
 
-            // NEW: Fixed order. Monetag (B) first, then Adsgram (A), then RichAds (C)
-            const networkOrder = [
-                AD_NETWORK_CONFIGS[0], // Monetag
-                AD_NETWORK_CONFIGS[1], // Adsgram
-                AD_NETWORK_CONFIGS[2]  // RichAds
-            ];
-            
+            // Waterfall Order: Monetag -> Adsgram -> RichAds -> Telega.io
+            const networkOrderIndices = AD_NETWORK_CONFIGS.map((_, i) => i);
             let adResult = null;
-            let networkConfig;
+            let adShowed = false;
 
-            for (networkConfig of networkOrder) {
+            for (const networkIndex of networkOrderIndices) {
+                const networkConfig = AD_NETWORK_CONFIGS[networkIndex];
                 const calculatedAdResult = calculateAdPoints(networkConfig);
                 
                 showAdModal(networkConfig.name);
+                console.log(`--- Waterfall: Trying ${networkConfig.name} ---`);
+                
+                if (TelemetreePixel) {
+                    TelemetreePixel.track("adLoadAttempt", { network: networkConfig.name });
+                }
 
                 try {
-                    // This function wraps the ad loader in a 3-second timeout
                     const result = await Promise.race([
                         networkConfig.loader(calculatedAdResult),
                         new Promise((_, reject) => 
@@ -1015,17 +1056,24 @@
                         )
                     ]);
                     
+                    adShowed = true;
                     if (result) {
+                        // Rewarded ad was successful
                         adResult = result;
-                        break; // SUCCESS! Exit the loop.
                     } else {
+                        // Non-rewarded ad was successful
                         console.log(`${networkConfig.name} was non-rewarded. Skipping reward.`);
-                        hideAdModal();
                         await updateDoc(getUserDocRef(userId), { lastAdWatch: Date.now() });
-                        updateAdButtonState();
-                        if (telemetree) telemetree.track("adViewCompleted", { network: networkConfig.name, rewarded: false });
-                        return; 
+                        if (TelemetreePixel) {
+                            TelemetreePixel.track("adViewed", {
+                                network: networkConfig.name,
+                                rewarded: false,
+                                points: 0
+                            });
+                        }
                     }
+                    // An ad (rewarded or not) was shown, so we stop the waterfall.
+                    break; 
 
                 } catch (error) {
                     adLoadFailed(networkConfig.name, error.message);
@@ -1033,17 +1081,21 @@
                 }
             }
             
-            // Loop finished. Check if we have a successful ad result.
+            // Loop finished. Check results.
             if (adResult) {
+                // A rewarded ad was successful
                 await finishAdWatch(adResult);
-                if (telemetree) telemetree.track("adViewCompleted", { network: adResult.network, rewarded: true, points: adResult.points });
+            } else if (adShowed) {
+                // A non-rewarded ad was successful
+                hideAdModal();
+                updateAdButtonState();
             } else {
                 // All networks in the waterfall failed
                 showStatus("All ad networks are busy. Please try again in a moment.", 'error');
                 hideAdModal();
-                watchAdBtn.disabled = false; // Re-enable button manually
-                updateAdButtonState();
-                if (telemetree) telemetree.track("adWaterfallFailed");
+                watchAdBtn.disabled = false; // Manually re-enable button
+                adMessageEl.textContent = "Click below to watch an ad.";
+                adCooldownEl.classList.add('hidden');
             }
         }
 
@@ -1073,12 +1125,21 @@
                 debugNetworkEl.textContent = adResult.network;
                 debugLocationEl.textContent = adResult.locationTier;
                 adDebugEl.classList.remove('hidden');
+                
+                if (TelemetreePixel) {
+                    TelemetreePixel.track("adViewed", {
+                        network: adResult.network,
+                        rewarded: true,
+                        points: pointsEarned,
+                        locationTier: adResult.locationTier,
+                        effectiveCPM: adResult.effectiveCPM
+                    });
+                }
 
             } catch (error) {
                 console.error("Error updating points:", error);
                 showStatus("Failed to record points.", 'error');
             } finally {
-                // This will re-check the cooldown and re-enable the button if necessary
                 updateAdButtonState();
             }
         }
@@ -1092,7 +1153,7 @@
                     walletAddress: wallet
                 });
                 userData.walletAddress = wallet;
-                updateDashboard();
+                updateDashboard(); // Update button state
             } catch (error) {
                 console.error("Error saving wallet address:", error);
             }
@@ -1122,6 +1183,10 @@
             
             withdrawalModal.classList.remove('hidden');
             withdrawalModal.classList.add('flex');
+            
+            if (TelemetreePixel) {
+                TelemetreePixel.track("withdrawalModalOpened");
+            }
         }
 
         function closeWithdrawalModal() {
@@ -1153,15 +1218,19 @@
                     walletAddress: wallet
                 });
                 
-                if(telemetree) telemetree.track("withdrawalSuccess", { amount: pointsToDeduct });
-
                 closeWithdrawalModal();
                 showStatus(`Withdrawal request for $10.00 USDT submitted to ${wallet}. Processing may take 24-48 hours.`, 'success');
+                
+                if (TelemetreePixel) {
+                    TelemetreePixel.track("withdrawalSubmitted", {
+                        points: pointsToDeduct,
+                        usdt_value: 10
+                    });
+                }
 
             } catch (error) {
                 console.error("Error during withdrawal:", error);
                 showStatus("Withdrawal failed due to a database error.", 'error');
-                if(telemetree) telemetree.track("withdrawalFailed", { error: error.message });
             } finally {
                 submitWithdrawalBtn.disabled = false;
             }
@@ -1196,8 +1265,13 @@
                 default:
                     return;
             }
-            if(telemetree) telemetree.track("socialShare", { platform: platform });
             window.open(url, '_blank');
+            
+            if (TelemetreePixel) {
+                TelemetreePixel.track("referralShared", {
+                    platform: platform
+                });
+            }
         }
 
 
@@ -1235,23 +1309,6 @@
 
         openWithdrawalBtn.addEventListener('click', openWithdrawalModal);
         closeWithdrawalModalBtn.addEventListener('click', closeWithdrawalModal);
-        
-        // Add to Home Screen Modal Listeners
-        addToHomeBtn.addEventListener('click', () => {
-             homeScreenModal.classList.remove('hidden');
-             homeScreenModal.classList.add('flex');
-             lucide.createIcons(); // Re-render icons in modal
-        });
-        closeHomeScreenModalBtn.addEventListener('click', () => {
-             homeScreenModal.classList.add('hidden');
-             homeScreenModal.classList.remove('flex');
-        });
-
-        // Manual Refresh Button Listener
-        refreshBtn.addEventListener('click', () => {
-            if (telemetree) telemetree.track("manualRefresh");
-            location.reload();
-        });
 
         copyReferralBtn.addEventListener('click', () => {
             try {
@@ -1264,7 +1321,6 @@
                 document.body.removeChild(textArea);
                 
                 showStatus("Referral link copied to clipboard!", 'success');
-                if(telemetree) telemetree.track("referralLinkCopied");
             } catch (err) {
                 showStatus("Failed to copy link.", 'error');
             }
@@ -1275,9 +1331,26 @@
                 handleSocialShare(e.currentTarget.getAttribute('data-platform'));
             });
         });
+        
+        // Add to Home Screen Modal Handlers
+        addToHomeBtn.addEventListener('click', () => {
+            homeScreenModal.classList.remove('hidden');
+            homeScreenModal.classList.add('flex');
+            lucide.createIcons();
+        });
+        closeHomeScreenModalBtn.addEventListener('click', () => {
+            homeScreenModal.classList.add('hidden');
+            homeScreenModal.classList.remove('flex');
+        });
+        
+        // Refresh Button
+        refreshBtn.addEventListener('click', () => {
+            location.reload();
+        });
 
         // Initialize App on Window Load
         window.onload = initFirebase;
     </script>
+
 </body>
 </html>
