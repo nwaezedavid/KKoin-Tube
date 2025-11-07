@@ -879,6 +879,13 @@
             if (networkConfig.name === 'Telega.io') {
                  return { points: 0, network: networkConfig.name, isRewarded: false };
             }
+            // Check for Monetag non-rewarded format
+            const monetagConfigIndex = userData.totalAdsWatched % MONETAG_CONFIGS.length;
+            const monetagConfig = MONETAG_CONFIGS[monetagConfigIndex];
+            if (networkConfig.name === 'Monetag' && monetagConfig.type === 'non-rewarded') {
+                return { points: 0, network: networkConfig.name, isRewarded: false };
+            }
+
             
             const userLocation = simulateUserLocation();
             const effectiveCPM = networkConfig.base_cpm * userLocation.multiplier;
@@ -1044,7 +1051,7 @@
             });
         }
 
-        async function startAdSequence() {
+        async function startAdWaterfall() {
             if (watchAdBtn.disabled) return;
             
             watchAdBtn.disabled = true;
@@ -1055,64 +1062,72 @@
                 TelemetreePixel.track("watchAdClicked");
             }
 
-            // --- NEW FIXED SEQUENCE LOGIC ---
-            // 1. Get the next network in the sequence
-            const networkIndex = userData.totalAdsWatched % AD_NETWORK_CONFIGS.length;
-            const networkConfig = AD_NETWORK_CONFIGS[networkIndex];
-            
-            // 2. Calculate points
-            const adResult = calculateAdPoints(networkConfig);
-            
-            showAdModal(networkConfig.name);
-            console.log(`--- Ad Sequence: Trying ${networkConfig.name} (Ad #${userData.totalAdsWatched}) ---`);
-            
-            if (TelemetreePixel) {
-                TelemetreePixel.track("adLoadAttempt", { network: networkConfig.name });
-            }
+            // Waterfall Order: Monetag -> RichAds -> Adsgram -> Telega.io
+            const networkOrderIndices = AD_NETWORK_CONFIGS.map((_, i) => i);
+            let adResult = null;
+            let adShowed = false;
 
-            try {
-                // 3. Get the correct timeout for this network
-                const timeout = networkConfig.timeout;
+            for (const networkIndex of networkOrderIndices) {
+                const networkConfig = AD_NETWORK_CONFIGS[networkIndex];
+                // Pass networkConfig so we can check for non-rewarded types
+                const calculatedAdResult = calculateAdPoints(networkConfig); 
                 
-                // 4. Try to load the ad
-                const result = await Promise.race([
-                    networkConfig.loader(adResult),
-                    new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Ad network timed out')), timeout)
-                    )
-                ]);
+                showAdModal(networkConfig.name);
+                console.log(`--- Waterfall: Trying ${networkConfig.name} ---`);
                 
-                // 5. Handle Success
-                if (result) {
-                    // Rewarded ad was successful
-                    await finishAdWatch(result);
-                } else {
-                    // Non-rewarded ad was successful (e.g., Telega.io or Monetag In-App)
-                    console.log(`${networkConfig.name} was non-rewarded. Skipping reward.`);
-                    // We still update lastAdWatch and ad count to start cooldown and move sequence
-                    await updateDoc(getUserDocRef(userId), { 
-                        lastAdWatch: Date.now(),
-                        totalAdsWatched: userData.totalAdsWatched + 1
-                    });
-                    if (TelemetreePixel) {
-                        TelemetreePixel.track("adViewed", {
-                            network: networkConfig.name,
-                            rewarded: false,
-                            points: 0
-                        });
-                    }
-                    hideAdModal();
-                    updateAdButtonState(); // Start cooldown
+                if (TelemetreePixel) {
+                    TelemetreePixel.track("adLoadAttempt", { network: networkConfig.name });
                 }
 
-            } catch (error) {
-                // 6. Handle Failure
-                adLoadFailed(networkConfig.name, error.message);
-                showStatus(`${networkConfig.name} ad failed. Please try again.`, 'error');
+                try {
+                    // FIX: Use special timeout for Monetag
+                    const timeout = networkConfig.timeout;
+                    
+                    const result = await Promise.race([
+                        networkConfig.loader(calculatedAdResult),
+                        new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Ad network timed out')), timeout)
+                        )
+                    ]);
+                    
+                    adShowed = true;
+                    if (result) {
+                        // Rewarded ad was successful
+                        adResult = result;
+                    } else {
+                        // Non-rewarded ad was successful
+                        console.log(`${networkConfig.name} was non-rewarded. Skipping reward.`);
+                        await updateDoc(getUserDocRef(userId), { lastAdWatch: Date.now(), totalAdsWatched: userData.totalAdsWatched + 1 });
+                        if (TelemetreePixel) {
+                            TelemetreePixel.track("adViewed", {
+                                network: networkConfig.name,
+                                rewarded: false,
+                                points: 0
+                            });
+                        }
+                    }
+                    // An ad (rewarded or not) was shown, so we stop the waterfall.
+                    break; 
+
+                } catch (error) {
+                    adLoadFailed(networkConfig.name, error.message);
+                    // Ad failed, loop will continue to the next network
+                }
+            }
+            
+            // Loop finished. Check results.
+            if (adResult) {
+                // A rewarded ad was successful
+                await finishAdWatch(adResult);
+            } else if (adShowed) {
+                // A non-rewarded ad was successful
                 hideAdModal();
-                // Re-enable the button. Do NOT increment totalAdsWatched.
-                // The user will try the *same* network again on next click.
-                watchAdBtn.disabled = false;
+                updateAdButtonState();
+            } else {
+                // All networks in the waterfall failed
+                showStatus("All ad networks are busy. Please try again in a moment.", 'error');
+                hideAdModal();
+                watchAdBtn.disabled = false; // Manually re-enable button
                 adMessageEl.textContent = "Click below to watch an ad.";
                 adCooldownEl.classList.add('hidden');
             }
@@ -1136,7 +1151,8 @@
                     totalAdsWatched: userData.totalAdsWatched + 1
                 });
                 
-                const statusType = 'success'; // Always success now
+                // FIX: Typo 'info : 'success' -> 'info' : 'success'
+                const statusType = 'success';
                 showStatus(`You earned ${pointsEarned} Kkoin from ${creditMessage}.`, statusType);
                 
                 debugNetworkEl.textContent = adResult.network;
@@ -1305,7 +1321,7 @@
         });
 
         // Use the new sequence function
-        watchAdBtn.addEventListener('click', startAdSequence);
+        watchAdBtn.addEventListener('click', startAdWaterfall);
 
         usdtTrc20PageInput.addEventListener('input', () => {
             const wallet = usdtTrc20PageInput.value.trim();
