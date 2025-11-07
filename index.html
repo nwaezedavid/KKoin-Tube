@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en">
+<!-- FIX: Add class for dark mode toggling -->
+<html lang="en" class="">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,8 +15,6 @@
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
     <!-- Monetag SDK (Network B - Rewarded) -->
     <script src='//libtl.com/sdk.js' data-zone='10143671' data-sdk='show_10143671'></script>
-    <!-- Monetag SDK (Network B - Banner) -->
-    <script async src="//al.ladsp.com/ad/ad.js" type="text/javascript"></script>
     <!-- Telega.io SDK (Network D) -->
     <script src="https://inapp.telega.io/sdk/v1/sdk.js"></script>
 
@@ -51,6 +50,12 @@
     
     <!-- 4. Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind for Dark Mode -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // This enables 'dark:' variants
+        }
+    </script>
     <!-- Load Inter font -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
@@ -59,67 +64,67 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-start justify-center p-4">
+<body class="bg-gray-100 dark:bg-gray-900 min-h-screen flex items-start justify-center p-4">
 
     <!-- Main Application Container -->
-    <div id="app" class="w-full max-w-lg bg-white shadow-xl rounded-xl p-6 space-y-6">
+    <div id="app" class="w-full max-w-lg bg-white dark:bg-gray-800 shadow-xl rounded-xl p-6 space-y-6">
 
         <!-- Loading & Error Indicator -->
         <div id="status-message" class="hidden p-3 text-sm rounded-lg" role="alert"></div>
 
         <!-- Header and KKoin Balance -->
-        <header class="text-center space-y-1 border-b pb-4">
-            <h1 class="text-3xl font-extrabold text-blue-700">KKoin Tube</h1>
-            <p class="text-sm text-gray-500">Watch, Earn, Convert.</p>
+        <header class="text-center space-y-1 border-b pb-4 dark:border-gray-700">
+            <h1 class="text-3xl font-extrabold text-blue-700 dark:text-blue-400">KKoin Tube</h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Watch, Earn, Convert.</p>
             <div class="pt-2">
-                <p class="text-gray-600 text-sm">Current Points:</p>
-                <p id="kkoin-balance" class="text-5xl font-black text-green-600">0</p>
+                <p class="text-gray-600 dark:text-gray-300 text-sm">Current Points:</p>
+                <p id="kkoin-balance" class="text-5xl font-black text-green-600 dark:text-green-400">0</p>
             </div>
         </header>
 
         <!-- Navigation -->
-        <nav class="flex justify-between border-b pb-4">
-            <button data-page="dashboard" class="nav-btn font-semibold text-sm text-blue-700 border-b-2 border-blue-700 p-2 transition duration-150">Dashboard</button>
-            <button data-page="referral" class="nav-btn font-semibold text-sm text-gray-500 hover:text-blue-500 border-b-2 border-transparent p-2 transition duration-150">Referral</button>
-            <button data-page="wallet" class="nav-btn font-semibold text-sm text-gray-500 hover:text-blue-500 border-b-2 border-transparent p-2 transition duration-150">Wallet</button>
+        <nav class="flex justify-between border-b pb-4 dark:border-gray-700">
+            <button data-page="dashboard" class="nav-btn font-semibold text-sm text-blue-700 dark:text-blue-400 border-b-2 border-blue-700 dark:border-blue-400 p-2 transition duration-150">Dashboard</button>
+            <button data-page="referral" class="nav-btn font-semibold text-sm text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 border-b-2 border-transparent p-2 transition duration-150">Referral</button>
+            <button data-page="wallet" class="nav-btn font-semibold text-sm text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 border-b-2 border-transparent p-2 transition duration-150">Wallet</button>
         </nav>
 
         <!-- --- DASHBOARD PAGE (Default View) --- -->
         <section id="dashboard-page" class="page-content space-y-4">
-            <h2 class="text-xl font-bold text-gray-700">Earn Kkoin</h2>
+            <h2 class="text-xl font-bold text-gray-700 dark:text-gray-200">Earn Kkoin</h2>
 
             <!-- Watch Ad Button & Ad Simulation Area -->
-            <div id="ad-watch-container" class="bg-blue-50 p-4 rounded-lg shadow-inner text-center space-y-3">
-                <p class="text-blue-700 font-semibold" id="ad-message">Click below to watch an ad.</p>
+            <div id="ad-watch-container" class="bg-blue-50 dark:bg-gray-900 p-4 rounded-lg shadow-inner text-center space-y-3">
+                <p class="text-blue-700 dark:text-blue-300 font-semibold" id="ad-message">Click below to watch an ad.</p>
                 <button id="watch-ad-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
                     Watch Video Ad (Earn Kkoin)
                 </button>
                 <p id="ad-cooldown" class="hidden text-sm text-red-500 font-medium"></p>
                 <!-- Optional Debug Display -->
-                <p id="ad-debug" class="text-xs text-gray-500 hidden mt-2">Points based on: <span id="debug-network"></span> in <span id="debug-location"></span></p>
+                <p id="ad-debug" class="text-xs text-gray-500 dark:text-gray-400 hidden mt-2">Points based on: <span id="debug-network"></span> in <span id="debug-location"></span></p>
             </div>
             
             <!-- Ad Slots for Placement (HIDDEN FROM USER) -->
-            <div class="hidden space-y-4 pt-4 border-t border-gray-200">
-                <p class="text-sm font-semibold text-gray-600">Ad Placement Areas (Hidden from users):</p>
+            <div class="hidden space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <p class="text-sm font-semibold text-gray-600 dark:text-gray-400">Ad Placement Areas (Hidden from users):</p>
                 
                 <!-- ADSGRAM AD SLOT -->
-                <div id="adsgram-ad-slot" class="p-3 border-2 border-dashed border-gray-300 rounded-lg text-center text-xs text-gray-500">
+                <div id="adsgram-ad-slot" class="p-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-center text-xs text-gray-500 dark:text-gray-400">
                     AdsGram Ad Placement
                 </div>
 
                 <!-- MONETAG AD SLOT -->
-                <div id="monetag-ad-slot" class="p-3 border-2 border-dashed border-gray-300 rounded-lg text-center text-xs text-gray-500">
+                <div id="monetag-ad-slot" class="p-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-center text-xs text-gray-500 dark:text-gray-400">
                     Monetag Ad Placement
                 </div>
                 
                 <!-- RICHADS AD SLOT -->
-                <div id="richads-ad-slot" class="p-3 border-2 border-dashed border-gray-300 rounded-lg text-center text-xs text-gray-500">
+                <div id="richads-ad-slot" class="p-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-center text-xs text-gray-500 dark:text-gray-400">
                     RichAds Ad Placement
                 </div>
                 
                 <!-- TELEGA.IO AD SLOT -->
-                <div id="telega-ad-slot" class="p-3 border-2 border-dashed border-gray-300 rounded-lg text-center text-xs text-gray-500">
+                <div id="telega-ad-slot" class="p-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-center text-xs text-gray-500 dark:text-gray-400">
                     Telega.io Ad Placement
                 </div>
 
@@ -131,37 +136,37 @@
 
         <!-- --- REFERRAL PAGE --- -->
         <section id="referral-page" class="page-content space-y-4 hidden">
-            <h2 class="text-xl font-bold text-purple-700">Invite & Earn</h2>
+            <h2 class="text-xl font-bold text-purple-700 dark:text-purple-400">Invite & Earn</h2>
 
-            <div class="bg-purple-50 p-4 rounded-lg space-y-3 shadow">
+            <div class="bg-purple-50 dark:bg-gray-900 p-4 rounded-lg space-y-3 shadow">
                 <!-- Referral Stats -->
-                <div class="flex justify-around text-center border-b pb-3 mb-3">
+                <div class="flex justify-around text-center border-b pb-3 mb-3 dark:border-gray-700">
                     <div>
-                        <p id="referral-count-display" class="text-3xl font-black text-purple-600">0</p>
-                        <p class="text-sm text-purple-700">Users Referred</p>
+                        <p id="referral-count-display" class="text-3xl font-black text-purple-600 dark:text-purple-400">0</p>
+                        <p class="text-sm text-purple-700 dark:text-purple-300">Users Referred</p>
                     </div>
                     <div>
-                        <p id="referral-earnings-display" class="text-3xl font-black text-green-600">0</p>
-                        <p class="text-sm text-purple-700">Kkoin Earned</p>
+                        <p id="referral-earnings-display" class="text-3xl font-black text-green-600 dark:text-green-400">0</p>
+                        <p class="text-sm text-purple-700 dark:text-purple-300">Kkoin Earned</p>
                     </div>
                 </div>
 
                 <!-- UPDATED POINT VALUE -->
-                <p class="text-sm text-purple-800 font-semibold">
+                <p class="text-sm text-purple-800 dark:text-purple-200 font-semibold">
                     Share your unique link and earn **1,000 Kkoin** per sign-up! Help your friends start earning crypto today.
                 </p>
                 
                 <!-- Referral Link Box -->
                 <div class="flex items-center space-x-2">
-                    <input type="text" id="referral-link" readonly class="flex-grow p-2 text-sm bg-white border border-purple-300 rounded-lg font-mono truncate" value="Loading...">
+                    <input type="text" id="referral-link" readonly class="flex-grow p-2 text-sm bg-white dark:bg-gray-700 border border-purple-300 dark:border-purple-600 rounded-lg font-mono truncate text-gray-900 dark:text-gray-100" value="Loading...">
                     <button id="copy-referral-btn" class="bg-purple-600 hover:bg-purple-700 text-white p-2 rounded-lg text-sm transition duration-150 flex items-center">
                         <i data-lucide="copy" class="w-4 h-4"></i>
                     </button>
                 </div>
 
                 <!-- Social Sharing Buttons -->
-                <div class="pt-3 border-t">
-                    <p class="text-sm font-medium text-purple-700 mb-2">Share on Social Media:</p>
+                <div class="pt-3 border-t dark:border-gray-700">
+                    <p class="text-sm font-medium text-purple-700 dark:text-purple-300 mb-2">Share on Social Media:</p>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         <button data-platform="telegram" class="social-share-btn bg-blue-500 hover:bg-blue-600 text-white p-3 rounded-lg text-xs font-bold transition duration-150 flex items-center justify-center space-x-1">
                             <i data-lucide="send" class="w-4 h-4"></i><span>Telegram</span>
@@ -185,38 +190,38 @@
                 </div>
             </div>
             
-            <p id="referrer-info" class="text-xs text-purple-600 hidden text-center">You were referred by: <span id="referrer-id-display"></span></p>
+            <p id="referrer-info" class="text-xs text-purple-600 dark:text-purple-400 hidden text-center">You were referred by: <span id="referrer-id-display"></span></p>
 
         </section>
 
         <!-- --- WALLET PAGE (Updated) --- -->
         <section id="wallet-page" class="page-content space-y-4 hidden">
-            <h2 class="text-xl font-bold text-green-700">Wallet & Withdrawal</h2>
+            <h2 class="text-xl font-bold text-green-700 dark:text-green-400">Wallet & Withdrawal</h2>
 
             <!-- Conversion Info -->
-            <div class="bg-green-50 p-4 rounded-lg space-y-2 shadow-inner">
-                <p class="text-sm font-medium text-green-800">Your Equivalent Value:</p>
-                <p id="usdt-equivalent" class="text-3xl font-black text-green-600">$0.00 USDT</p>
-                <p class="text-xs text-green-700">Conversion Rate: 10,000 Kkoin $\approx$ 1 USDT</p>
+            <div class="bg-green-50 dark:bg-gray-900 p-4 rounded-lg space-y-2 shadow-inner">
+                <p class="text-sm font-medium text-green-800 dark:text-green-200">Your Equivalent Value:</p>
+                <p id="usdt-equivalent" class="text-3xl font-black text-green-600 dark:text-green-400">$0.00 USDT</p>
+                <p class="text-xs text-green-700 dark:text-green-300">Conversion Rate: 10,000 Kkoin $\approx$ 1 USDT</p>
                 <p id="withdrawal-min-info" class="text-xs text-red-500 font-semibold">Minimum Withdrawal: 10 USDT (100,000 Kkoin) and 100 Referrals</p>
             </div>
             
             <!-- NEW: Wallet Address Input Box -->
-            <div class="space-y-1 bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                <label for="usdt-trc20-page" class="block text-sm font-medium text-gray-700">Your TRC20 Wallet Address (USDT)</label>
-                <input type="text" id="usdt-trc20-page" placeholder="Enter or update your TRC20 address" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
-                <p id="wallet-address-status" class="text-xs text-gray-500">Address is required for withdrawal and will be saved.</p>
+            <div class="space-y-1 bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                <label for="usdt-trc20-page" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Your TRC20 Wallet Address (USDT)</label>
+                <input type="text" id="usdt-trc20-page" placeholder="Enter or update your TRC20 address" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                <p id="wallet-address-status" class="text-xs text-gray-500 dark:text-gray-400">Address is required for withdrawal and will be saved.</p>
             </div>
 
             <!-- Withdrawal Action -->
-            <div class="pt-4 border-t space-y-4">
+            <div class="pt-4 border-t dark:border-gray-700 space-y-4">
                 <button id="open-withdrawal-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md disabled:opacity-50" disabled>
                     Need 10 USDT Minimum
                 </button>
 
                 <!-- Create Wallet CTA (Updated text) -->
-                <div class="bg-yellow-100 p-3 rounded-lg text-center space-y-2">
-                    <p class="text-sm font-medium text-yellow-800">Don't have a crypto wallet?</p>
+                <div class="bg-yellow-100 dark:bg-yellow-900/30 p-3 rounded-lg text-center space-y-2">
+                    <p class="text-sm font-medium text-yellow-800 dark:text-yellow-200">Don't have a crypto wallet?</p>
                     <a href="https://t.me/CoinvetoBot?start=3AC81229" target="_blank" class="inline-flex items-center justify-center w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md">
                         Create Crypto Wallet
                     </a>
@@ -224,31 +229,32 @@
             </div>
             
             <!-- "Add to Home Screen" Button (Moved from footer) -->
-            <div class="pt-4 border-t">
-                 <button id="add-to-home-btn" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-4 rounded-lg transition duration-150 flex items-center justify-center space-x-2">
+            <div class="pt-4 border-t dark:border-gray-700">
+                 <button id="add-to-home-btn" class="w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-bold py-3 px-4 rounded-lg transition duration-150 flex items-center justify-center space-x-2">
                      <i data-lucide="plus-square" class="w-5 h-5"></i>
                     <span>Add to Home Screen</span>
                 </button>
             </div>
         </section>
         
-        <footer class="pt-2 border-t text-center space-y-2">
+        <footer class="pt-2 border-t dark:border-gray-700 text-center space-y-2">
             <div class="flex justify-between items-center">
                  <!-- Refresh Button -->
-                <button id="refresh-btn" class="text-xs text-gray-400 hover:text-blue-600 hover:underline flex items-center space-x-1">
+                <button id="refresh-btn" class="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:underline flex items-center space-x-1">
                     <i data-lucide="refresh-cw" class="w-3 h-3"></i>
                     <span>Refresh</span>
                 </button>
                 
-                <p class="text-xs text-gray-400">ID: <span id="user-id-display">Loading...</span></p>
+                <p class="text-xs text-gray-400 dark:text-gray-500">ID: <span id="user-id-display">Loading...</span></p>
                
                 <!-- "Add to Home" button removed from here -->
                 <div class="w-16"></div> <!-- Empty div for spacing -->
             </div>
             
-            <!-- Adsgram Banner Ad Slot (Replaced Monetag) -->
-            <div id="adsgram-banner-slot" class="w-full flex justify-center pt-2">
-                <!-- This div is the container for the Adsgram banner -->
+            <!-- Responsive Banner Ad Slot -->
+            <div id="responsive-banner-slot" class="w-full flex justify-center pt-2">
+                <!-- This div is the container for the banner ad -->
+                <!-- The banner ad (e.g., Adsgram or RichAds) will be initialized here via JavaScript -->
             </div>
         </footer>
 
@@ -258,19 +264,19 @@
 
     <!-- Withdrawal Modal (Hidden by default) -->
     <div id="withdrawal-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
-            <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Confirm Withdrawal</h3>
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <h3 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4 border-b dark:border-gray-700 pb-2">Confirm Withdrawal</h3>
             <form id="withdrawal-form" class="space-y-4">
-                <p class="text-sm text-gray-700">You are about to withdraw <span class="font-bold text-green-600">10 USDT</span> by converting <span class="font-bold text-green-600">100,000 Kkoin</span>.</p>
+                <p class="text-sm text-gray-700 dark:text-gray-200">You are about to withdraw <span class="font-bold text-green-600 dark:text-green-400">10 USDT</span> by converting <span class="font-bold text-green-600 dark:text-green-400">100,000 Kkoin</span>.</p>
                 
-                <div class="space-y-1 bg-gray-50 p-3 rounded-lg border">
-                    <p class="block text-sm font-medium text-gray-700">Target TRC20 Address:</p>
-                    <p id="modal-target-wallet" class="font-mono text-xs text-gray-900 break-all">Loading...</p>
+                <div class="space-y-1 bg-gray-50 dark:bg-gray-700 p-3 rounded-lg border dark:border-gray-600">
+                    <p class="block text-sm font-medium text-gray-700 dark:text-gray-200">Target TRC20 Address:</p>
+                    <p id="modal-target-wallet" class="font-mono text-xs text-gray-900 dark:text-gray-100 break-all">Loading...</p>
                     <p id="wallet-error" class="text-xs text-red-500 hidden">Invalid data or insufficient points.</p>
                 </div>
 
                 <div class="flex justify-end space-x-3 pt-2">
-                    <button type="button" id="close-withdrawal-modal" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">Cancel</button>
+                    <button type="button" id="close-withdrawal-modal" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-600 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500">Cancel</button>
                     <button type="submit" id="submit-withdrawal-btn" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50">Confirm and Withdraw</button>
                 </div>
             </form>
@@ -279,15 +285,15 @@
 
     <!-- Ad Watching Modal (Hidden by default) -->
     <div id="ad-modal" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl text-center space-y-4">
-            <h3 class="text-2xl font-bold text-gray-800" id="ad-modal-title">Watching Ad...</h3>
-            <div class="w-full h-40 bg-gray-300 flex items-center justify-center rounded-lg shadow-inner">
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-2xl text-center space-y-4">
+            <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-100" id="ad-modal-title">Watching Ad...</h3>
+            <div class="w-full h-40 bg-gray-300 dark:bg-gray-700 flex items-center justify-center rounded-lg shadow-inner">
                 <!-- This is the actual ad content area -->
-                <p id="ad-content" class="text-gray-500 text-sm">Ad from Network <span id="current-ad-network">A</span></p>
+                <p id="ad-content" class="text-gray-500 dark:text-gray-400 text-sm">Ad from Network <span id="current-ad-network">A</span></p>
                 <!-- Place Monetag/RichAds/Adsgram specific ad container here if needed -->
                 <!-- Example: <div id="monetag-ad-display"></div> -->
             </div>
-            <p id="ad-countdown-text" class="text-xl font-mono text-gray-800">Please wait for the ad to finish.</p>
+            <p id="ad-countdown-text" class="text-xl font-mono text-gray-800 dark:text-gray-200">Please wait for the ad to finish.</p>
             <button id="close-ad-modal-btn" class="px-6 py-2 text-sm font-medium text-white bg-gray-500 rounded-lg hover:bg-gray-600 disabled:opacity-50" disabled>
                 Close (Ad is Active)
             </button>
@@ -296,16 +302,16 @@
     
     <!-- Add to Home Screen Modal (Hidden by default) -->
     <div id="home-screen-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
-            <h3 class="text-xl font-bold text-gray-800 mb-4">Add to Home Screen</h3>
-            <div class="space-y-4 text-sm text-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <h3 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Add to Home Screen</h3>
+            <div class="space-y-4 text-sm text-gray-700 dark:text-gray-200">
                 <p>For quick access, you can add this app to your phone's home screen!</p>
                 <div class="flex items-center space-x-3">
-                    <i data-lucide="menu" class="w-10 h-10 text-blue-600 flex-shrink-0"></i>
+                    <i data-lucide="menu" class="w-10 h-10 text-blue-600 dark:text-blue-400 flex-shrink-0"></i>
                     <p>1. Tap the **Menu** button (or three dots) in your Telegram chat with the bot.</p>
                 </div>
                 <div class="flex items-center space-x-3">
-                    <i data-lucide="plus-square" class="w-10 h-10 text-green-600 flex-shrink-0"></i>
+                    <i data-lucide="plus-square" class="w-10 h-10 text-green-600 dark:text-green-400 flex-shrink-0"></i>
                     <p>2. Find and tap **"Add to Home Screen"** or "Add Shortcut".</p>
                 </div>
             </div>
@@ -391,6 +397,10 @@
         let AdsgramController = null; // Controller for Adsgram SDK
         let TelegaAdsController = null; // Controller for Telega.io SDK
         let TelemetreePixel = null; // Controller for Telemetree Analytics
+        
+        // NEW: Global WebApp constant
+        const WebApp = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+        let interstitialAdCounter = 0; // Counter for interstitial ads
 
         let userData = {
             kkoinPoints: 0,
@@ -415,7 +425,6 @@
         
         // --- AD NETWORK TIMEOUTS (NEW) ---
         const AD_NETWORK_TIMEOUT_MS = 3000; // 3 seconds for most networks
-        const MONETAG_TIMEOUT_MS = 10000; // 10 seconds for Monetag (postback)
 
         const SOCIAL_SHARE_MESSAGE = "🚀 Earn crypto effortlessly with KKoin Tube! Watch short videos, earn Kkoin, and withdraw to USDT. Join me now using my unique link and get a bonus start! Don't miss out:";
 
@@ -426,10 +435,10 @@
 
         // --- AD NETWORK CONFIGS ---
         const ADSGRAM_BLOCK_IDS = ["int-16929", "task-16930", "16931"]; // Adsgram IDs for rotation
+        // FIX: Removed In-App Interstitial from this array. It's now called separately.
         const MONETAG_CONFIGS = [
             { id: 10143671, format: 'interstitial', type: 'rewarded' }, // Rewarded Interstitial
             { id: 10143671, format: 'pop', type: 'rewarded' },          // Rewarded Popup
-            { id: 10143671, format: 'inApp', type: 'non-rewarded', inAppSettings: { frequency: 2, capping: 0.1, interval: 30, timeout: 5, everyPage: false } } // In-app Interstitial (Non-rewarded)
         ];
         const TELEGA_CONFIGS = [
             { adBlockUuid: "539bda18-3512-4c8f-9bd3-07224427af90", type: 'non-rewarded' } // Telega.io (Non-rewarded)
@@ -438,7 +447,7 @@
         // Base config for calculating points and defining loader function
         // UPDATED WATERFALL ORDER: Monetag (B) -> RichAds (C) -> Adsgram (A) -> Telega.io (D)
         const AD_NETWORK_CONFIGS = [
-            { name: 'Monetag', base_cpm: 1.50, id: 'B', loader: loadMonetag, timeout: MONETAG_TIMEOUT_MS },
+            { name: 'Monetag', base_cpm: 1.50, id: 'B', loader: loadMonetag, timeout: AD_NETWORK_TIMEOUT_MS }, // Monetag now has standard timeout
             { name: 'RichAds', base_cpm: 4.00, id: 'C', loader: loadRichAds, timeout: AD_NETWORK_TIMEOUT_MS },
             { name: 'Adsgram.ai', base_cpm: 3.00, id: 'A', loader: loadAdsgram, timeout: AD_NETWORK_TIMEOUT_MS },
             { name: 'Telega.io', base_cpm: 1.00, id: 'D', loader: loadTelega, timeout: AD_NETWORK_TIMEOUT_MS } // Non-rewarded, base_cpm is for analytics
@@ -495,13 +504,24 @@
         const getUserDocRef = (uid) => doc(db, 'artifacts', appId, 'users', uid, 'kkoin_data', 'profile');
         const getReferralEventsRef = () => collection(db, 'artifacts', appId, 'public', 'data', 'referral_events');
 
-        // --- TELEGRAM INIT ---
+        // --- TELEGRAM INIT & THEME ---
+        function applyTheme(colorScheme) {
+            if (colorScheme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+        
         function initializeTelegramWebApp() {
-            if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
-                const WebApp = window.Telegram.WebApp;
+            if (WebApp) {
                 WebApp.ready();
                 WebApp.expand();
-                document.body.style.backgroundColor = WebApp.backgroundColor || '#f3f4f6'; 
+                
+                // Apply theme immediately
+                applyTheme(WebApp.colorScheme);
+                // Listen for future theme changes
+                WebApp.onEvent('themeChanged', () => applyTheme(WebApp.colorScheme));
 
                 WebApp.BackButton.show();
                 WebApp.BackButton.onClick(() => { WebApp.close(); });
@@ -515,17 +535,18 @@
         function showStatus(message, type = 'info') {
             statusMessageEl.textContent = message;
             statusMessageEl.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800', 'bg-blue-100', 'text-blue-800');
+            statusMessageEl.classList.remove('dark:bg-red-900/30', 'dark:text-red-200', 'dark:bg-green-900/30', 'dark:text-green-200', 'dark:bg-blue-900/30', 'dark:text-blue-200');
 
             switch(type) {
                 case 'error':
-                    statusMessageEl.classList.add('bg-red-100', 'text-red-800');
+                    statusMessageEl.classList.add('bg-red-100', 'text-red-800', 'dark:bg-red-900/30', 'dark:text-red-200');
                     break;
                 case 'success':
-                    statusMessageEl.classList.add('bg-green-100', 'text-green-800');
+                    statusMessageEl.classList.add('bg-green-100', 'text-green-800', 'dark:bg-green-900/30', 'dark:text-green-200');
                     break;
                 case 'info':
                 default:
-                    statusMessageEl.classList.add('bg-blue-100', 'text-blue-800');
+                    statusMessageEl.classList.add('bg-blue-100', 'text-blue-800', 'dark:bg-blue-900/30', 'dark:text-blue-200');
                     break;
             }
             const duration = type === 'error' ? 10000 : 5000;
@@ -611,8 +632,43 @@
             }
         }
 
+        // --- NEW: INTERSTITIAL AD LOGIC ---
+        function showInterstitialAd() {
+            interstitialAdCounter++;
+            if (interstitialAdCounter % 3 !== 0) {
+                console.log("Interstitial ad skipped (counter).");
+                return; // Only show 1 in 3 times
+            }
+            
+            console.log("Attempting to show interstitial ad...");
+            if (TelemetreePixel) {
+                TelemetreePixel.track("adLoadAttempt", { network: "Monetag Interstitial" });
+            }
+
+            const zoneId = 10143671; // Using the same rewarded zone ID
+            const showAdFunction = window[`show_${zoneId}`];
+            // This is the config for the In-App Interstitial you provided
+            const inAppSettings = { frequency: 2, capping: 0.1, interval: 30, timeout: 5, everyPage: false };
+
+            if (showAdFunction) {
+                try {
+                    showAdFunction({ type: 'inApp', inAppSettings: inAppSettings });
+                    if (TelemetreePixel) {
+                        TelemetreePixel.track("adViewed", { network: "Monetag Interstitial", rewarded: false });
+                    }
+                } catch (e) {
+                    console.error("Monetag In-App Interstitial error:", e);
+                }
+            } else {
+                 console.warn("Monetag SDK (show) function not found. Skipping interstitial.");
+            }
+        }
+
         // --- NAVIGATION/ROUTING ---
         function navigateTo(pageId) {
+            if (currentPage === pageId) return; // Don't run if already on page
+            if (WebApp) WebApp.HapticFeedback.impactOccurred('light');
+            
             currentPage = pageId;
             pageContents.forEach(page => {
                 page.classList.add('hidden');
@@ -622,11 +678,11 @@
             });
 
             navBtns.forEach(btn => {
-                btn.classList.remove('text-blue-700', 'border-blue-700');
-                btn.classList.add('text-gray-500', 'border-transparent', 'hover:text-blue-500');
+                btn.classList.remove('text-blue-700', 'border-blue-700', 'dark:text-blue-400', 'dark:border-blue-400');
+                btn.classList.add('text-gray-500', 'border-transparent', 'hover:text-blue-500', 'dark:text-gray-400', 'dark:hover:text-blue-400');
                 if (btn.getAttribute('data-page') === pageId) {
-                    btn.classList.add('text-blue-700', 'border-blue-700');
-                    btn.classList.remove('text-gray-500', 'border-transparent');
+                    btn.classList.add('text-blue-700', 'border-blue-700', 'dark:text-blue-400', 'dark:border-blue-400');
+                    btn.classList.remove('text-gray-500', 'border-transparent', 'dark:text-gray-400');
                 }
             });
             
@@ -639,6 +695,9 @@
             }
             
             lucide.createIcons();
+            
+            // Show interstitial ad on navigation
+            showInterstitialAd();
         }
 
         // --- FIREBASE SETUP & AUTHENTICATION ---
@@ -656,7 +715,7 @@
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
-                        userIdDisplayEl.textContent = userId;
+                        userIdDisplayEl.textContent = userId.substring(0, 8) + "..."; // Show partial ID
                         referralLinkEl.value = `https://t.me/${TELEGRAM_BOT_USERNAME}?start=${userId}`;
                         
                         // FIX: Await Telemetree init *before* any other setup.
@@ -849,16 +908,16 @@
 
             if (userData.walletAddress && walletIsValid) {
                 walletAddressStatusEl.textContent = "Address is saved and ready for withdrawal.";
-                walletAddressStatusEl.classList.remove('text-red-500', 'text-gray-500');
-                walletAddressStatusEl.classList.add('text-green-600');
+                walletAddressStatusEl.classList.remove('text-red-500', 'text-gray-500', 'dark:text-gray-400');
+                walletAddressStatusEl.classList.add('text-green-600', 'dark:text-green-400');
             } else if (userData.walletAddress && !walletIsValid) {
                 walletAddressStatusEl.textContent = "Saved address looks invalid. Please correct it.";
-                walletAddressStatusEl.classList.remove('text-green-600', 'text-gray-500');
-                walletAddressStatusEl.classList.add('text-red-500');
+                walletAddressStatusEl.classList.remove('text-green-600', 'text-gray-500', 'dark:text-gray-400');
+                walletAddressStatusEl.classList.add('text-red-500', 'dark:text-red-400');
             } else {
                 walletAddressStatusEl.textContent = "Address is required for withdrawal and will be saved.";
-                walletAddressStatusEl.classList.remove('text-green-600', 'text-red-500');
-                walletAddressStatusEl.classList.add('text-gray-500');
+                walletAddressStatusEl.classList.remove('text-green-600', 'text-red-500', 'dark:text-red-400');
+                walletAddressStatusEl.classList.add('text-gray-500', 'dark:text-gray-400');
             }
 
             if (userData.referrerId) {
@@ -923,7 +982,7 @@
                  return { points: 0, network: networkConfig.name, isRewarded: false };
             }
             // Check for Monetag non-rewarded format
-            const monetagConfigIndex = userData.totalAdsWatched % MONETAG_CONFIGS.length;
+            const monetagConfigIndex = (userData.totalAdsWatched + 1) % MONETAG_CONFIGS.length; // +1 to check *next* ad
             const monetagConfig = MONETAG_CONFIGS[monetagConfigIndex];
             if (networkConfig.name === 'Monetag' && monetagConfig.type === 'non-rewarded') {
                 return { points: 0, network: networkConfig.name, isRewarded: false };
@@ -1036,11 +1095,8 @@
                         adPromise = showAdFunction();
                     } else if (currentConfig.format === 'pop') {
                         adPromise = showAdFunction('pop');
-                    } else if (currentConfig.format === 'inApp') {
-                        showAdFunction({ type: 'inApp', inAppSettings: currentConfig.inAppSettings });
-                        resolve(null); // Non-rewarded, resolve with null
-                        return;
                     } else {
+                        // This case should be filtered by calculateAdPoints, but as a fallback:
                         return reject(new Error("Unknown Monetag format."));
                     }
                     
@@ -1115,6 +1171,7 @@
             watchAdBtn.disabled = true;
             adMessageEl.textContent = "Loading ad...";
             adDebugEl.classList.add('hidden');
+            if (WebApp) WebApp.HapticFeedback.impactOccurred('medium');
             
             if (TelemetreePixel) {
                 TelemetreePixel.track("watchAdClicked");
@@ -1202,6 +1259,7 @@
                 watchAdBtn.disabled = false; // Manually re-enable button
                 adMessageEl.textContent = "Click below to watch an ad.";
                 adCooldownEl.classList.add('hidden');
+                if (WebApp) WebApp.HapticFeedback.notificationOccurred('error');
             }
         }
 
@@ -1210,6 +1268,7 @@
             const pointsEarned = adResult.points;
             
             hideAdModal();
+            if (WebApp) WebApp.HapticFeedback.notificationOccurred('success');
 
             // All rewards are now direct credit from the user's perspective
             let creditMessage = `${adResult.network} (Credit Applied)`;
@@ -1266,6 +1325,8 @@
         }
 
         function openWithdrawalModal() {
+            if (WebApp) WebApp.HapticFeedback.impactOccurred('medium');
+            
             const wallet = usdtTrc20PageInput.value.trim();
             const isReadyForPoints = userData.kkoinPoints >= MIN_CONVERSION_POINTS;
             const isReadyForReferrals = userData.totalReferrals >= MIN_REFERRALS_FOR_WITHDRAWAL;
@@ -1303,6 +1364,7 @@
 
         withdrawalForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (WebApp) WebApp.HapticFeedback.notificationOccurred('success');
 
             submitWithdrawalBtn.disabled = true;
 
@@ -1314,6 +1376,7 @@
                 walletErrorEl.textContent = "Withdrawal failed: Minimum requirements not met.";
                 walletErrorEl.classList.remove('hidden');
                 submitWithdrawalBtn.disabled = false;
+                if (WebApp) WebApp.HapticFeedback.notificationOccurred('error');
                 return;
             }
 
@@ -1339,6 +1402,7 @@
             } catch (error) {
                 console.error("Error during withdrawal:", error);
                 showStatus("Withdrawal failed due to a database error.", 'error');
+                if (WebApp) WebApp.HapticFeedback.notificationOccurred('error');
             } finally {
                 submitWithdrawalBtn.disabled = false;
             }
@@ -1347,6 +1411,8 @@
         // --- SHARING LOGIC ---
 
         function handleSocialShare(platform) {
+            if (WebApp) WebApp.HapticFeedback.impactOccurred('light');
+            
             const referralLink = referralLinkEl.value;
             const encodedMessage = encodeURIComponent(`${SOCIAL_SHARE_MESSAGE} ${referralLink}`);
             let url = '';
@@ -1392,9 +1458,6 @@
                 navigateTo(e.currentTarget.getAttribute('data-page'));
             });
         });
-
-        // FIX: Ensure watchAdBtn is only assigned *after* DOM is loaded
-        // This is handled by moving all listeners into window.onload
         
         usdtTrc20PageInput.addEventListener('input', () => {
             const wallet = usdtTrc20PageInput.value.trim();
@@ -1405,12 +1468,12 @@
             } else {
                 if (wallet.length > 0) {
                     walletAddressStatusEl.textContent = "Please ensure the format is correct (must start with 'T').";
-                    walletAddressStatusEl.classList.remove('text-green-600', 'text-gray-500');
-                    walletAddressStatusEl.classList.add('text-red-500');
+                    walletAddressStatusEl.classList.remove('text-green-600', 'text-gray-500', 'dark:text-gray-400');
+                    walletAddressStatusEl.classList.add('text-red-500', 'dark:text-red-400');
                 } else {
                     walletAddressStatusEl.textContent = "Address is required for withdrawal and will be saved.";
-                    walletAddressStatusEl.classList.remove('text-green-600', 'text-red-500');
-                    walletAddressStatusEl.classList.add('text-gray-500');
+                    walletAddressStatusEl.classList.remove('text-green-600', 'text-red-500', 'dark:text-red-400');
+                    walletAddressStatusEl.classList.add('text-gray-500', 'dark:text-gray-400');
                 }
             }
             updateDashboard();
@@ -1420,6 +1483,7 @@
         closeWithdrawalModalBtn.addEventListener('click', closeWithdrawalModal);
 
         copyReferralBtn.addEventListener('click', () => {
+            if (WebApp) WebApp.HapticFeedback.notificationOccurred('success');
             try {
                 const link = referralLinkEl.value;
                 const textArea = document.createElement("textarea");
@@ -1443,6 +1507,7 @@
         
         // Add to Home Screen Modal Handlers
         addToHomeBtn.addEventListener('click', () => {
+            if (WebApp) WebApp.HapticFeedback.impactOccurred('light');
             homeScreenModal.classList.remove('hidden');
             homeScreenModal.classList.add('flex');
             lucide.createIcons();
@@ -1454,6 +1519,7 @@
         
         // Refresh Button
         refreshBtn.addEventListener('click', () => {
+            if (WebApp) WebApp.HapticFeedback.impactOccurred('light');
             location.reload();
         });
 
