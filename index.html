@@ -17,8 +17,15 @@
     <!-- Telega.io SDK (Network D) -->
     <script src="https://inapp.telega.io/sdk/v1/sdk.js"></script>
 
-    <!-- 3. Analytics SDK -->
+    <!-- 3. Analytics SDKs -->
     <script src="https://s3.eu-central-1.amazonaws.com/cdn.telemetree.io/telemetree-pixel.js"></script>
+    <!-- NEW: TG Analytics Script -->
+    <script 
+        async 
+        src="https://tganalytics.xyz/index.js" 
+        onload="initAnalytics()" 
+        type="text/javascript"
+    ></script>
     
     <!-- 4. Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -510,6 +517,24 @@
              }
         }
         
+        // This is the placeholder for the new analytics script
+        // It's called by the `onload="initAnalytics()"` in the <head>
+        window.initAnalytics = () => {
+            try {
+                if (typeof window.telegramAnalytics !== 'undefined') {
+                    window.telegramAnalytics.init({
+                        token: 'eyJhcHBfbmFtZSI6Imtrb2luX3R1YmUiLCJhcHBfdXJsIjoiaHR0cHM6Ly90Lm1lL0trb2luVHViZUFwcEJvdCIsImFwcF9kb21haW4iOiJodHRwczovL253YWV6ZWRhdmlkLmdpdGh1Yi5pby9LS29pbi1UdWJlLyJ9!drgHNdJF1sxf9B/l1vtUY2oTWvBeTTSyVJlpvWLCfRs=',
+                        appName: 'kkoin_tube', // Use a simple identifier
+                    });
+                    console.log("TG Analytics SDK (tganalytics.xyz) Initialized.");
+                } else {
+                    console.warn("TG Analytics (tganalytics.xyz) SDK not found.");
+                }
+            } catch (e) {
+                console.error("TG Analytics init error:", e);
+            }
+        };
+
         async function initTelemetree(uid) {
             try {
                 if (typeof window.telemetree !== 'undefined') {
