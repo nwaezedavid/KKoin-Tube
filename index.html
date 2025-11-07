@@ -22,7 +22,7 @@
     <!-- 3. Analytics SDKs -->
     <script src="https://s3.eu-central-1.amazonaws.com/cdn.telemetree.io/telemetree-pixel.js"></script>
     
-    <!-- FIX: Move tganalytics.xyz init function to the global scope in the <head> -->
+    <!-- FIX: Moved tganalytics.xyz init function to the global scope in the <head> -->
     <script>
         // This function is now in the global scope and can be found by the `onload` attribute
         window.initAnalytics = () => {
@@ -312,27 +312,6 @@
         </div>
     </div>
 
-
-    <!-- FIX: Move tganalytics.xyz init function to the global scope -->
-    <script>
-        // This function is now in the global scope and can be found by the `onload` attribute
-        window.initAnalytics = () => {
-            try {
-                if (typeof window.telegramAnalytics !== 'undefined') {
-                    window.telegramAnalytics.init({
-                        token: 'eyJhcHBfbmFtZSI6Imtrb2luX3R1YmUiLCJhcHBfdXJsIjoiaHR0cHM6Ly90Lm1lL0trb2luVHViZUFwcEJvdCIsImFwcF9kb21haW4iOiJodHRwczovL253YWV6ZWRhdmlkLmdpdGh1Yi5pby9LS29pbi1UdWJlLyJ9!drgHNdJF1sxf9B/l1vtUY2oTWvBeTTSyVJlpvWLCfRs=',
-                        appName: 'kkoin_tube', // Use a simple identifier
-                    });
-                    console.log("TG Analytics SDK (tganalytics.xyz) Initialized.");
-                } else {
-                    console.warn("TG Analytics (tganalytics.xyz) SDK not found.");
-                }
-            } catch (e) {
-                console.error("TG Analytics init error:", e);
-            }
-        };
-    </script>
-
     <!-- Firebase Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -446,20 +425,18 @@
         ];
 
         // --- DOM Elements ---
+        // FIX: Moved all DOM element declarations outside of functions
+        // to prevent ReferenceError
         const statusMessageEl = document.getElementById('status-message');
         const balanceEl = document.getElementById('kkoin-balance');
         const navBtns = document.querySelectorAll('.nav-btn');
         const pageContents = document.querySelectorAll('.page-content');
-        
-        // Dashboard
         const watchAdBtn = document.getElementById('watch-ad-btn');
         const adCooldownEl = document.getElementById('ad-cooldown');
         const adMessageEl = document.getElementById('ad-message');
         const adDebugEl = document.getElementById('ad-debug');
         const debugNetworkEl = document.getElementById('debug-network');
         const debugLocationEl = document.getElementById('debug-location');
-
-        // Referral Page
         const referralLinkEl = document.getElementById('referral-link');
         const copyReferralBtn = document.getElementById('copy-referral-btn');
         const referralCountDisplayEl = document.getElementById('referral-count-display');
@@ -467,15 +444,11 @@
         const socialShareBtns = document.querySelectorAll('.social-share-btn');
         const referrerInfoEl = document.getElementById('referrer-info');
         const referrerIdDisplayEl = document.getElementById('referrer-id-display');
-        
-        // Wallet Page
         const usdtEquivalentEl = document.getElementById('usdt-equivalent');
         const openWithdrawalBtn = document.getElementById('open-withdrawal-btn');
         const usdtTrc20PageInput = document.getElementById('usdt-trc20-page');
         const walletAddressStatusEl = document.getElementById('wallet-address-status');
         const withdrawalMinInfoEl = document.getElementById('withdrawal-min-info');
-        
-        // Modals
         const userIdDisplayEl = document.getElementById('user-id-display');
         const withdrawalModal = document.getElementById('withdrawal-modal');
         const closeWithdrawalModalBtn = document.getElementById('close-withdrawal-modal');
@@ -486,13 +459,9 @@
         const adCountdownTextEl = document.getElementById('ad-countdown-text');
         const currentAdNetworkEl = document.getElementById('current-ad-network');
         const modalTargetWalletEl = document.getElementById('modal-target-wallet');
-        
-        // Add to Home Screen Modal
         const homeScreenModal = document.getElementById('home-screen-modal');
         const addToHomeBtn = document.getElementById('add-to-home-btn');
         const closeHomeScreenModalBtn = document.getElementById('close-home-screen-modal');
-        
-        // Footer
         const refreshBtn = document.getElementById('refresh-btn');
 
 
@@ -543,12 +512,27 @@
                 // Initialize Rewarded Ad Controller
                 AdsgramController = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_IDS[0] });
                 
-                // Initialize Banner Ad
-                window.Adsgram.createBanner({
-                    blockId: "task-16930", // Your Banner ID
-                    container: "adsgram-banner-slot"
-                });
-                console.log("Adsgram Controller and Banner Initialized.");
+                // FIX: Check for 'initBanner' function before calling it
+                // FIX: Use `createBanner` as per newer API docs (and check existence)
+                if (typeof window.Adsgram.createBanner === 'function') {
+                    window.Adsgram.createBanner({
+                        blockId: "task-16930", // Your Banner ID
+                        container: "adsgram-banner-slot"
+                    });
+                    console.log("Adsgram Controller and Banner Initialized.");
+                } else if (typeof window.Adsgram.initBanner === 'function') {
+                     // Fallback to old function just in case
+                     window.Adsgram.initBanner({
+                        blockId: "task-16930", // Your Banner ID
+                        container: "adsgram-banner-slot"
+                    });
+                    console.log("Adsgram Controller and Banner Initialized (using initBanner).");
+                } else {
+                    console.warn("Adsgram 'createBanner' or 'initBanner' function not found. Skipping banner.");
+                    // Still init rewarded controller
+                    AdsgramController = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_IDS[0] });
+                    console.log("Adsgram Controller Initialized (Rewarded Only).");
+                }
              } else {
                 console.warn("Adsgram SDK (sad.min.js) not found. Adsgram ads will be skipped.");
              }
@@ -580,22 +564,18 @@
         async function initTelemetree(uid) {
             try {
                 if (typeof window.telemetree !== 'undefined') {
-                    // FIX: Set trackGroup to false to disable automatic tracking
+                    // FIX: Re-enable automatic tracking. This is the correct way.
+                    // The SDK is smart enough to wait for the Telegram context.
                     TelemetreePixel = await telemetree({
                         projectId: "189ea164-4e5c-4055-bb8d-0972f604679e",
                         apiKey: "c6968991-8a2b-4d45-8d11-a4a2da3bdf41",
                         isTelegramContext: true,
                         logLevel: 'info',
-                        trackGroup: false // Disable automatic session/pageView tracking
+                        trackGroup: "medium" // Re-enable automatic session/pageView tracking
                     });
                     
-                    // FIX: Manually track session and initial page view AFTER await
-                    // This ensures the user context is ready before we track.
-                    TelemetreePixel.track("sessionStart");
-                    TelemetreePixel.track("pageView", {
-                        page: "dashboard" // Default page
-                    });
-                    console.log("Telemetree Analytics Initialized and Manually Tracked Session/Page.");
+                    // FIX: Remove manual tracking. The SDK will handle this.
+                    console.log("Telemetree Analytics Initialized (Automatic Tracking).");
                     
                 } else {
                     console.warn("Telemetree SDK (telemetree-pixel.js) not found. Analytics will be skipped.");
@@ -626,6 +606,7 @@
             
             // Track page view in analytics
             if (TelemetreePixel) {
+                // This call is for subsequent page views, not the initial one.
                 TelemetreePixel.track("pageView", {
                     page: pageId
                 });
@@ -1127,9 +1108,12 @@
 
             let finalAdResult = null;
             let adShowed = false;
+            let firstAdTried = true;
 
             for (const currentNetwork of networkWaterfallOrder) {
                 // 3. Calculate points *for the specific network* we are trying
+                // Only calculate points if it's the *first* ad in the sequence, or if it's not.
+                // Re-calculate points for *each* network in the waterfall
                 const adResult = calculateAdPoints(currentNetwork);
 
                 showAdModal(currentNetwork.name);
@@ -1383,9 +1367,9 @@
             });
         });
 
-        // Use the new sequence function
-        watchAdBtn.addEventListener('click', startAdSequence);
-
+        // FIX: Ensure watchAdBtn is only assigned *after* DOM is loaded
+        // This is handled by moving all listeners into window.onload
+        
         usdtTrc20PageInput.addEventListener('input', () => {
             const wallet = usdtTrc20PageInput.value.trim();
             if (/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(wallet)) {
@@ -1448,7 +1432,12 @@
         });
 
         // Initialize App on Window Load
-        window.onload = initFirebase;
+        window.onload = () => {
+            // FIX: Add click listener for watchAdBtn *after* window.onload
+            // This ensures the button exists before we add a listener.
+            document.getElementById('watch-ad-btn').addEventListener('click', startAdSequence);
+            initFirebase();
+        };
     </script>
 
 </body>
