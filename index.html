@@ -15,6 +15,7 @@
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
     <!-- Monetag SDK (Network B - Rewarded) -->
     <script src='//libtl.com/sdk.js' data-zone='10143671' data-sdk='show_10143671'></script>
+    <!-- Monetag SDK (Banner) - REMOVED, Adsgram is used -->
     <!-- Telega.io SDK (Network D) -->
     <script src="https://inapp.telega.io/sdk/v1/sdk.js"></script>
 
@@ -59,7 +60,11 @@
     <!-- Load Inter font -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        body { font-family: 'Inter', sans-serif; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            /* Smooth transitions for theme changes */
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
     </style>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
@@ -73,13 +78,17 @@
         <div id="status-message" class="hidden p-3 text-sm rounded-lg" role="alert"></div>
 
         <!-- Header and KKoin Balance -->
-        <header class="text-center space-y-1 border-b pb-4 dark:border-gray-700">
+        <header class="text-center space-y-1 border-b pb-4 relative dark:border-gray-700">
             <h1 class="text-3xl font-extrabold text-blue-700 dark:text-blue-400">KKoin Tube</h1>
             <p class="text-sm text-gray-500 dark:text-gray-400">Watch, Earn, Convert.</p>
             <div class="pt-2">
                 <p class="text-gray-600 dark:text-gray-300 text-sm">Current Points:</p>
                 <p id="kkoin-balance" class="text-5xl font-black text-green-600 dark:text-green-400">0</p>
             </div>
+            <!-- REFRESH BUTTON (MOVED) -->
+            <button id="refresh-btn" class="absolute top-0 right-0 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-2">
+                <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+            </button>
         </header>
 
         <!-- Navigation -->
@@ -215,12 +224,12 @@
 
             <!-- Withdrawal Action -->
             <div class="pt-4 border-t dark:border-gray-700 space-y-4">
-                <button id="open-withdrawal-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md disabled:opacity-50" disabled>
+                <button id="open-withdrawal-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md disabled:opacity-50">
                     Need 10 USDT Minimum
                 </button>
 
-                <!-- Create Wallet CTA (Updated text) -->
-                <div class="bg-yellow-100 dark:bg-yellow-900/30 p-3 rounded-lg text-center space-y-2">
+                <!-- Create Wallet CTA (Temporarily Hidden) -->
+                <div class="bg-yellow-100 dark:bg-yellow-900/30 p-3 rounded-lg text-center space-y-2 hidden">
                     <p class="text-sm font-medium text-yellow-800 dark:text-yellow-200">Don't have a crypto wallet?</p>
                     <a href="https://t.me/CoinvetoBot?start=3AC81229" target="_blank" class="inline-flex items-center justify-center w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md">
                         Create Crypto Wallet
@@ -239,22 +248,18 @@
         
         <footer class="pt-2 border-t dark:border-gray-700 text-center space-y-2">
             <div class="flex justify-between items-center">
-                 <!-- Refresh Button -->
-                <button id="refresh-btn" class="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:underline flex items-center space-x-1">
-                    <i data-lucide="refresh-cw" class="w-3 h-3"></i>
-                    <span>Refresh</span>
-                </button>
+                <!-- Empty div for spacing, replaced refresh button -->
+                <div class="w-16"></div> 
                 
                 <p class="text-xs text-gray-400 dark:text-gray-500">ID: <span id="user-id-display">Loading...</span></p>
                
-                <!-- "Add to Home" button removed from here -->
-                <div class="w-16"></div> <!-- Empty div for spacing -->
+                <!-- Empty div for spacing, replaced add to home button -->
+                <div class="w-16"></div> 
             </div>
             
-            <!-- Responsive Banner Ad Slot -->
-            <div id="responsive-banner-slot" class="w-full flex justify-center pt-2">
-                <!-- This div is the container for the banner ad -->
-                <!-- The banner ad (e.g., Adsgram or RichAds) will be initialized here via JavaScript -->
+            <!-- Adsgram Banner Ad Slot (Replaced Monetag) -->
+            <div id="adsgram-banner-slot" class="w-full flex justify-center pt-2">
+                <!-- This div is the container for the Adsgram banner -->
             </div>
         </footer>
 
@@ -425,6 +430,7 @@
         
         // --- AD NETWORK TIMEOUTS (NEW) ---
         const AD_NETWORK_TIMEOUT_MS = 3000; // 3 seconds for most networks
+        // const MONETAG_TIMEOUT_MS = 10000; // No longer needed, we reward immediately
 
         const SOCIAL_SHARE_MESSAGE = "🚀 Earn crypto effortlessly with KKoin Tube! Watch short videos, earn Kkoin, and withdraw to USDT. Join me now using my unique link and get a bonus start! Don't miss out:";
 
@@ -631,7 +637,7 @@
                 console.error("Telemetree initialization failed:", error);
             }
         }
-
+        
         // --- NEW: INTERSTITIAL AD LOGIC ---
         function showInterstitialAd() {
             interstitialAdCounter++;
@@ -663,6 +669,7 @@
                  console.warn("Monetag SDK (show) function not found. Skipping interstitial.");
             }
         }
+
 
         // --- NAVIGATION/ROUTING ---
         function navigateTo(pageId) {
@@ -981,8 +988,9 @@
             if (networkConfig.name === 'Telega.io') {
                  return { points: 0, network: networkConfig.name, isRewarded: false };
             }
-            // Check for Monetag non-rewarded format
-            const monetagConfigIndex = (userData.totalAdsWatched + 1) % MONETAG_CONFIGS.length; // +1 to check *next* ad
+            
+            // FIX: Check for Monetag non-rewarded format using the correct index
+            const monetagConfigIndex = (userData.totalAdsWatched) % MONETAG_CONFIGS.length;
             const monetagConfig = MONETAG_CONFIGS[monetagConfigIndex];
             if (networkConfig.name === 'Monetag' && monetagConfig.type === 'non-rewarded') {
                 return { points: 0, network: networkConfig.name, isRewarded: false };
@@ -1458,6 +1466,9 @@
                 navigateTo(e.currentTarget.getAttribute('data-page'));
             });
         });
+
+        // FIX: Ensure watchAdBtn is only assigned *after* DOM is loaded
+        // This is handled by moving all listeners into window.onload
         
         usdtTrc20PageInput.addEventListener('input', () => {
             const wallet = usdtTrc20PageInput.value.trim();
