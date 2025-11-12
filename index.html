@@ -117,7 +117,7 @@
             <!-- Watch Ad Button & Ad Simulation Area -->
             <div id="ad-watch-container" class="bg-blue-50 dark:bg-gray-900 p-4 rounded-lg shadow-inner text-center space-y-3">
                 <p class="text-blue-700 dark:text-blue-300 font-semibold" id="ad-message">Click below to watch an ad.</p>
-                <button id="watch-ad-btn" class_name="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                <button id="watch-ad-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
                     Watch Video Ad (Earn Kkoin)
                 </button>
                 <p id="ad-cooldown" class="hidden text-sm text-red-500 font-medium"></p>
@@ -243,9 +243,13 @@
                 <button id="ton-connect-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md">
                     Connect TON Wallet
                 </button>
-                <div id="ton-wallet-info" class="hidden text-xs text-center">
+                <div id="ton-wallet-info" class="hidden text-xs text-center space-y-3 mt-3">
                     <p class="text-green-700 dark:text-green-300">Wallet Connected!</p>
                     <p id="ton-wallet-address" class="text-gray-700 dark:text-gray-300 font-mono break-all"></p>
+                    <!-- NEW: Withdraw Kkoin Button -->
+                    <button id="ton-withdraw-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md disabled:opacity-50">
+                        Withdraw Kkoin as Token
+                    </button>
                 </div>
             </div>
 
@@ -303,7 +307,7 @@
             <!-- Responsive Banner Ad Slot -->
             <div id="responsive-banner-slot" class="w-full flex justify-center pt-2">
                 <!-- This div is the container for the banner ad -->
-                <!-- The banner ad (e.g., Adsgram or RichAds) will be initialized here via JavaScript -->
+                <!-- We will add the banner ad code here via JavaScript -->
             </div>
         </footer>
 
@@ -545,6 +549,8 @@
         const premiumThanksEl = document.getElementById('premium-thanks');
         const goPremiumBtn = document.getElementById('go-premium-btn');
         const premiumBadgeEl = document.getElementById('premium-badge');
+        // NEW: TON Withdraw Button
+        const tonWithdrawBtn = document.getElementById('ton-withdraw-btn');
         
 
         // --- TELEGRAM INIT & THEME ---
@@ -683,6 +689,8 @@
                     tonWalletInfoEl.classList.add('hidden');
                     tonConnectBtn.textContent = 'Connect TON Wallet';
                 }
+                // Update withdrawal button state whenever wallet status changes
+                updateDashboard();
             });
         }
 
@@ -992,17 +1000,30 @@
             
             const walletIsValid = /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(userData.walletAddress);
 
-            openWithdrawalBtn.disabled = !isReadyForWithdrawal || !walletIsValid;
+            // Hide/show the TRC20 withdrawal button
+            // openWithdrawalBtn.disabled = !isReadyForWithdrawal || !walletIsValid;
             
-            if (!isReadyForPoints) {
-                openWithdrawalBtn.textContent = `Need $10 USDT Minimum (${MIN_CONVERSION_POINTS.toLocaleString()} Kkoin)`;
-            } else if (!isReadyForReferrals) {
-                openWithdrawalBtn.textContent = `Need ${MIN_REFERRALS_FOR_WITHDRAWAL} Referrals (${userData.totalReferrals} done)`;
-            } else {
-                 openWithdrawalBtn.textContent = "Withdraw Earnings";
+            // if (!isReadyForPoints) {
+            //     openWithdrawalBtn.textContent = `Need $10 USDT Minimum (${MIN_CONVERSION_POINTS.toLocaleString()} Kkoin)`;
+            // } else if (!isReadyForReferrals) {
+            //     openWithdrawalBtn.textContent = `Need ${MIN_REFERRALS_FOR_WITHDRAWAL} Referrals (${userData.totalReferrals} done)`;
+            // } else {
+            //      openWithdrawalBtn.textContent = "Withdraw Earnings";
+            // }
+            
+            // NEW: Update TON Withdrawal Button
+            if (tonWithdrawBtn) {
+                 tonWithdrawBtn.disabled = !isReadyForWithdrawal;
+                 if (!isReadyForPoints) {
+                    tonWithdrawBtn.textContent = `Need ${MIN_CONVERSION_POINTS.toLocaleString()} Kkoin`;
+                } else if (!isReadyForReferrals) {
+                    tonWithdrawBtn.textContent = `Need ${MIN_REFERRALS_FOR_WITHDRAWAL} Referrals`;
+                } else {
+                    tonWithdrawBtn.textContent = "Withdraw Kkoin as Token";
+                }
             }
             
-            withdrawalMinInfoEl.textContent = `Minimum Withdrawal: 10 USDT (${MIN_CONVERSION_POINTS.toLocaleString()} Kkoin) and ${MIN_REFERRALS_FOR_WITHDRAWAL} Referrals`;
+            withdrawalMinInfoEl.textContent = `Minimum Withdrawal: 10 USDT (100,000 Kkoin) and ${MIN_REFERRALS_FOR_WITHDRAWAL} Referrals`;
 
             if (userData.walletAddress && walletIsValid) {
                 walletAddressStatusEl.textContent = "Address is saved and ready for withdrawal.";
@@ -1391,6 +1412,27 @@
                 console.error("Error saving wallet address:", error);
             }
         }
+        
+        // NEW: Placeholder for TON Withdrawal
+        function handleTonWithdrawal() {
+            if (WebApp) WebApp.HapticFeedback.impactOccurred('medium');
+            console.log("TON Withdrawal clicked");
+            
+            // Check for requirements again
+            const isReadyForPoints = userData.kkoinPoints >= MIN_CONVERSION_POINTS;
+            const isReadyForReferrals = userData.totalReferrals >= MIN_REFERRALS_FOR_WITHDRAWAL;
+
+            if (!isReadyForPoints || !isReadyForReferrals) {
+                 showStatus("You have not met the minimum withdrawal requirements.", 'error');
+                 if (WebApp) WebApp.HapticFeedback.notificationOccurred('error');
+                 return;
+            }
+            
+            // --- Placeholder ---
+            // This is where you would trigger your server (Supabase Edge Function)
+            // to send the user $KKOIN tokens to their connected wallet.
+            showStatus("TON Token withdrawal is coming soon! Your Kkoin are safe.", 'info');
+        }
 
         function openWithdrawalModal() {
             if (WebApp) WebApp.HapticFeedback.impactOccurred('medium');
@@ -1680,6 +1722,8 @@
         // Initialize App on Window Load
         window.onload = () => {
             document.getElementById('watch-ad-btn').addEventListener('click', startAdSequence);
+            // FIX: Add listener for TON Withdraw button
+            document.getElementById('ton-withdraw-btn').addEventListener('click', handleTonWithdrawal);
             mainAppLogic(); // Start the main app logic (which replaces initFirebase)
         };
     </script>
