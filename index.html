@@ -8,8 +8,8 @@
     <!-- 1. MANDATORY: Load the Telegram Web App Script -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
-    <!-- 2. Supabase SDK (REMOVED from <head>, now imported in the module script) -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> -->
+    <!-- 2. NEW: Supabase SDK -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> --> <!-- MOVED to module -->
 
     <!-- 3. Ad Network SDKs -->
     <!-- RichAds SDK (Network C) -->
@@ -22,7 +22,7 @@
     <script src="https://inapp.telega.io/sdk/v1/sdk.js"></script>
 
     <!-- 4. Analytics SDKs -->
-    <script src="https://s3.eu-central-1.amazonaws.com/cdn.telemetree.io/telemetree-pixel.js"></script>
+    <!-- Telemetree SDK (REMOVED) -->
     
     <!-- FIX: Move tganalytics.xyz init function to the global scope in the <head> -->
     <script>
@@ -262,7 +262,7 @@
             <!-- Responsive Banner Ad Slot -->
             <div id="responsive-banner-slot" class="w-full flex justify-center pt-2">
                 <!-- This div is the container for the banner ad -->
-                <!-- We will add the banner ad code here via JavaScript -->
+                <!-- The banner ad (e.g., Adsgram or RichAds) will be initialized here via JavaScript -->
             </div>
         </footer>
 
@@ -417,7 +417,6 @@
         
         // --- AD NETWORK TIMEOUTS (NEW) ---
         const AD_NETWORK_TIMEOUT_MS = 3000; // 3 seconds for most networks
-        const MONETAG_TIMEOUT_MS = 10000; // 10 seconds for Monetag
 
         const SOCIAL_SHARE_MESSAGE = "🚀 Earn crypto effortlessly with KKoin Tube! Watch short videos, earn Kkoin, and withdraw to USDT. Join me now using my unique link and get a bonus start! Don't miss out:";
 
@@ -440,7 +439,7 @@
         // Base config for calculating points and defining loader function
         // UPDATED WATERFALL ORDER: Monetag (B) -> RichAds (C) -> Adsgram (A) -> Telega.io (D)
         const AD_NETWORK_CONFIGS = [
-            { name: 'Monetag', base_cpm: 1.50, id: 'B', loader: loadMonetag, timeout: MONETAG_TIMEOUT_MS },
+            { name: 'Monetag', base_cpm: 1.50, id: 'B', loader: loadMonetag, timeout: AD_NETWORK_TIMEOUT_MS }, // Monetag now has standard timeout
             { name: 'RichAds', base_cpm: 4.00, id: 'C', loader: loadRichAds, timeout: AD_NETWORK_TIMEOUT_MS },
             { name: 'Adsgram.ai', base_cpm: 3.00, id: 'A', loader: loadAdsgram, timeout: AD_NETWORK_TIMEOUT_MS },
             { name: 'Telega.io', base_cpm: 1.00, id: 'D', loader: loadTelega, timeout: AD_NETWORK_TIMEOUT_MS } // Non-rewarded, base_cpm is for analytics
@@ -739,7 +738,7 @@
         async function setupUserListener(uid) {
             // 1. Try to fetch the user
             const { data, error } = await supabaseClient
-                .from('profiles')
+                .from('users') // FIX: Changed 'profiles' to 'users'
                 .select('*')
                 .eq('id', uid)
                 .single(); // Get one record or null
@@ -769,7 +768,7 @@
                 };
                 
                 const { error: insertError } = await supabaseClient
-                    .from('profiles')
+                    .from('users') // FIX: Changed 'profiles' to 'users'
                     .insert(newProfile);
 
                 if (insertError) {
@@ -796,7 +795,7 @@
                 .on('postgres_changes', { 
                     event: 'UPDATE', 
                     schema: 'public', 
-                    table: 'profiles', 
+                    table: 'users', // FIX: Changed 'profiles' to 'users'
                     filter: `id=eq.${uid}` 
                 }, 
                 (payload) => {
@@ -807,10 +806,7 @@
                 })
                 .subscribe();
             
-            // 2. Listen to referrals (This is harder, needs a count)
-            // For simplicity, we will just re-fetch the count on page load
-            // A full realtime count would require a database function (pg_notify)
-            // or a separate listener on the referral_events table.
+            // 2. Listen to referrals
             fetchReferralCount(uid);
             
             // Re-fetch count every time referral page is opened
@@ -818,10 +814,11 @@
         }
         
         async function fetchReferralCount(uid) {
+            // FIX: Count referrals by querying the 'users' table
             const { count, error } = await supabaseClient
-                .from('referral_events')
+                .from('users') // FIX: Changed 'referral_events' to 'users'
                 .select('*', { count: 'exact', head: true }) // head:true only gets the count
-                .eq('referrerId', uid);
+                .eq('referrerId', uid); // Count anyone whose referrerId is this user
 
             if (error) {
                 console.error("Error fetching referral count:", error);
@@ -854,7 +851,7 @@
             if (urlReferrerId && !userData.referrerId) {
                 // Set the referrerId on the user's new profile
                 const { error } = await supabaseClient
-                    .from('profiles')
+                    .from('users') // FIX: Changed 'profiles' to 'users'
                     .update({ referrerId: urlReferrerId })
                     .eq('id', uid);
                     
@@ -874,58 +871,38 @@
             if (referrerId === referredId) return; // Can't refer self
 
             try {
-                // Check if this referral has already been logged
-                const { data, error: checkError } = await supabaseClient
-                    .from('referral_events')
-                    .select('id')
-                    .eq('referredId', referredId)
-                    .limit(1);
+                // Check if this referral has already been logged (in this case, just check if user has a referrer)
+                // This check is now redundant thanks to checkInitialReferral, but we keep it safe
+                if (userData.referrerId && !userData.hasReceivedInitialBonus) {
 
-                if (checkError) throw checkError;
-
-                if (data.length === 0) {
-                    // 1. Create public referral event document
-                    const { error: eventError } = await supabaseClient
-                        .from('referral_events')
-                        .insert({
-                            referrerId: referrerId,
-                            referredId: referredId,
-                            bonusPoints: REFERRAL_BONUS_POINTS,
-                            status: 'claimed'
-                        });
-                    if (eventError) throw eventError;
-
-                    // 2. Grant bonus to the referrer (using Supabase RPC function 'increment_points')
-                    // This is safer than client-side math.
-                    // You must create this function in your Supabase SQL Editor:
-                    /*
-                        create function increment_points (user_id bigint, points_to_add bigint)
-                        returns void as
-                        $$
-                          update public.profiles
-                          set "kkoinPoints" = "kkoinPoints" + points_to_add
-                          where id = user_id;
-                        $$
-                        language sql volatile;
-                    */
-                    const { error: rpcError } = await supabaseClient
-                        .rpc('increment_points', {
-                            user_id: referrerId,
-                            points_to_add: REFERRAL_BONUS_POINTS
-                        });
-                    if (rpcError) throw rpcError;
+                    // 1. Grant bonus to the referrer (Manual fetch and update)
+                    const { data: referrerData, error: fetchError } = await supabaseClient
+                        .from('users')
+                        .select('kkoinPoints')
+                        .eq('id', referrerId)
+                        .single();
                     
-                    // 3. Grant initial bonus to the referred user (once)
-                    if (!userData.hasReceivedInitialBonus) {
-                        const { error: referredError } = await supabaseClient
-                            .from('profiles')
-                            .update({
-                                kkoinPoints: (userData.kkoinPoints || 0) + REFERRAL_INITIAL_BONUS_POINTS,
-                                hasReceivedInitialBonus: true
-                            })
-                            .eq('id', referredId);
-                        if (referredError) throw referredError;
-                    }
+                    if (fetchError) throw new Error(`Could not fetch referrer: ${fetchError.message}`);
+
+                    const newPoints = (referrerData.kkoinPoints || 0) + REFERRAL_BONUS_POINTS;
+                    
+                    const { error: updateError } = await supabaseClient
+                        .from('users')
+                        .update({ kkoinPoints: newPoints })
+                        .eq('id', referrerId);
+                        
+                    if (updateError) throw new Error(`Could not update referrer points: ${updateError.message}`);
+
+                    
+                    // 2. Grant initial bonus to the referred user (once)
+                    const { error: referredError } = await supabaseClient
+                        .from('users') // FIX: Changed 'profiles' to 'users'
+                        .update({
+                            kkoinPoints: (userData.kkoinPoints || 0) + REFERRAL_INITIAL_BONUS_POINTS,
+                            hasReceivedInitialBonus: true
+                        })
+                        .eq('id', referredId);
+                    if (referredError) throw referredError;
 
                     showStatus(`Referral successful! You and user ${referrerId} received a bonus.`, 'success');
                     userData.referrerId = referrerId;
@@ -1273,7 +1250,7 @@
                         // This is a non-rewarded ad. We must increment the ad counter
                         // and set the cooldown, but award no points.
                         const { error } = await supabaseClient
-                            .from('profiles')
+                            .from('users') // FIX: Changed 'profiles' to 'users'
                             .update({
                                 lastAdWatch: new Date().toISOString(),
                                 totalAdsWatched: userData.totalAdsWatched + 1
@@ -1323,7 +1300,7 @@
             try {
                 // We increment the ad count and points immediately
                 const { error } = await supabaseClient
-                    .from('profiles')
+                    .from('users') // FIX: Changed 'profiles' to 'users'
                     .update({
                         kkoinPoints: userData.kkoinPoints + pointsEarned,
                         lastAdWatch: new Date().toISOString(),
@@ -1363,7 +1340,7 @@
         async function saveWalletAddress(wallet) {
             try {
                 const { error } = await supabaseClient
-                    .from('profiles')
+                    .from('users') // FIX: Changed 'profiles' to 'users'
                     .update({ walletAddress: wallet })
                     .eq('id', userId);
                 if (error) throw error;
@@ -1435,7 +1412,7 @@
                 // You would call a Supabase Edge Function here to verify rewards before deducting
                 
                 const { error } = await supabaseClient
-                    .from('profiles')
+                    .from('users') // FIX: Changed 'profiles' to 'users'
                     .update({
                         kkoinPoints: userData.kkoinPoints - pointsToDeduct,
                         walletAddress: wallet
