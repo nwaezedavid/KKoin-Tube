@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- FIX: Add class for dark mode toggling -->
 <html lang="en" class="">
 <head>
     <meta charset="UTF-8">
@@ -21,7 +22,7 @@
     <script src="https://inapp.telega.io/sdk/v1/sdk.js"></script>
 
     <!-- 4. Analytics SDKs -->
-    <!-- Telemetree SDK (REMOVED) -->
+    <script src="https://s3.eu-central-1.amazonaws.com/cdn.telemetree.io/telemetree-pixel.js"></script>
     
     <!-- FIX: Move tganalytics.xyz init function to the global scope in the <head> -->
     <script>
@@ -415,6 +416,7 @@
         
         // --- AD NETWORK TIMEOUTS (NEW) ---
         const AD_NETWORK_TIMEOUT_MS = 3000; // 3 seconds for most networks
+        const MONETAG_TIMEOUT_MS = 10000; // 10 seconds for Monetag
 
         const SOCIAL_SHARE_MESSAGE = "🚀 Earn crypto effortlessly with KKoin Tube! Watch short videos, earn Kkoin, and withdraw to USDT. Join me now using my unique link and get a bonus start! Don't miss out:";
 
@@ -437,7 +439,7 @@
         // Base config for calculating points and defining loader function
         // UPDATED WATERFALL ORDER: Monetag (B) -> RichAds (C) -> Adsgram (A) -> Telega.io (D)
         const AD_NETWORK_CONFIGS = [
-            { name: 'Monetag', base_cpm: 1.50, id: 'B', loader: loadMonetag, timeout: AD_NETWORK_TIMEOUT_MS }, // Monetag now has standard timeout
+            { name: 'Monetag', base_cpm: 1.50, id: 'B', loader: loadMonetag, timeout: MONETAG_TIMEOUT_MS },
             { name: 'RichAds', base_cpm: 4.00, id: 'C', loader: loadRichAds, timeout: AD_NETWORK_TIMEOUT_MS },
             { name: 'Adsgram.ai', base_cpm: 3.00, id: 'A', loader: loadAdsgram, timeout: AD_NETWORK_TIMEOUT_MS },
             { name: 'Telega.io', base_cpm: 1.00, id: 'D', loader: loadTelega, timeout: AD_NETWORK_TIMEOUT_MS } // Non-rewarded, base_cpm is for analytics
@@ -704,8 +706,9 @@
                 const tgUser = WebApp.initDataUnsafe.user;
                 
                 if (tgUser) {
-                    userId = tgUser.id.toString(); // Use Telegram ID as Supabase ID
-                    userIdDisplayEl.textContent = userId.substring(0, 8) + "...";
+                    // FIX: Use Telegram ID as a number (BIGINT)
+                    userId = tgUser.id; 
+                    userIdDisplayEl.textContent = userId.toString().substring(0, 8) + "...";
                     referralLinkEl.value = `https://t.me/${TELEGRAM_BOT_USERNAME}?start=${userId}`;
                     
                     // Await Telemetree init *before* any other setup.
@@ -836,7 +839,8 @@
             const urlParams = new URLSearchParams(window.location.search);
             const startappParam = urlParams.get('startapp');
             if (startappParam && startappParam !== userId) {
-                return startappParam;
+                // FIX: Ensure referrer ID is also treated as a number
+                return parseInt(startappParam, 10);
             }
             return null;
         }
