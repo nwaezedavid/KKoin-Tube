@@ -259,7 +259,7 @@
                 <p id="usdt-equivalent" class="text-3xl font-black text-green-600 dark:text-green-400">$0.00 USDT</p>
                 <!-- Conversion rate text hidden -->
                 <p class="text-xs text-green-700 dark:text-green-300 hidden">Conversion Rate: 10,000 Kkoin $\approx$ 1 USDT</p>
-                <p id="withdrawal-min-info" class="text-xs text-red-500 font-semibold">Minimum Withdrawal: 10 USDT (100,000 Kkoin) and 100 Referrals</p>
+                <p id="withdrawal-min-info" class="text-xs text-red-500 font-semibold">Minimum Withdrawal: 100,000 Kkoin</p>
             </div>
             
             <!-- TRC20 Wallet Address Input Box (HIDDEN) -->
@@ -996,7 +996,8 @@
             
             const isReadyForPoints = userData.kkoinPoints >= MIN_CONVERSION_POINTS;
             const isReadyForReferrals = userData.totalReferrals >= MIN_REFERRALS_FOR_WITHDRAWAL;
-            const isReadyForWithdrawal = isReadyForPoints && isReadyForReferrals;
+            // FIX: Removed referral requirement
+            const isReadyForWithdrawal = isReadyForPoints; // && isReadyForReferrals;
             
             const walletIsValid = /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(userData.walletAddress);
 
@@ -1016,14 +1017,17 @@
                  tonWithdrawBtn.disabled = !isReadyForWithdrawal;
                  if (!isReadyForPoints) {
                     tonWithdrawBtn.textContent = `Need ${MIN_CONVERSION_POINTS.toLocaleString()} Kkoin`;
-                } else if (!isReadyForReferrals) {
-                    tonWithdrawBtn.textContent = `Need ${MIN_REFERRALS_FOR_WITHDRAWAL} Referrals`;
-                } else {
+                } 
+                // else if (!isReadyForReferrals) { // REMOVED
+                //     tonWithdrawBtn.textContent = `Need ${MIN_REFERRALS_FOR_WITHDRAWAL} Referrals`;
+                // } 
+                else {
                     tonWithdrawBtn.textContent = "Withdraw Kkoin as Token";
                 }
             }
             
-            withdrawalMinInfoEl.textContent = `Minimum Withdrawal: 10 USDT (100,000 Kkoin) and ${MIN_REFERRALS_FOR_WITHDRAWAL} Referrals`;
+            // FIX: Removed referral requirement from text
+            withdrawalMinInfoEl.textContent = `Minimum Withdrawal: 100,000 Kkoin`; // and ${MIN_REFERRALS_FOR_WITHDRAWAL} Referrals`;
 
             if (userData.walletAddress && walletIsValid) {
                 walletAddressStatusEl.textContent = "Address is saved and ready for withdrawal.";
@@ -1420,9 +1424,10 @@
             
             // Check for requirements again
             const isReadyForPoints = userData.kkoinPoints >= MIN_CONVERSION_POINTS;
-            const isReadyForReferrals = userData.totalReferrals >= MIN_REFERRALS_FOR_WITHDRAWAL;
+            // const isReadyForReferrals = userData.totalReferrals >= MIN_REFERRALS_FOR_WITHDRAWAL; // REMOVED
+            const isReadyForWithdrawal = isReadyForPoints; // && isReadyForReferrals;
 
-            if (!isReadyForPoints || !isReadyForReferrals) {
+            if (!isReadyForWithdrawal) {
                  showStatus("You have not met the minimum withdrawal requirements.", 'error');
                  if (WebApp) WebApp.HapticFeedback.notificationOccurred('error');
                  return;
@@ -1439,16 +1444,17 @@
             
             const wallet = usdtTrc20PageInput.value.trim();
             const isReadyForPoints = userData.kkoinPoints >= MIN_CONVERSION_POINTS;
-            const isReadyForReferrals = userData.totalReferrals >= MIN_REFERRALS_FOR_WITHDRAWAL;
+            // const isReadyForReferrals = userData.totalReferrals >= MIN_REFERRALS_FOR_WITHDRAWAL; // REMOVED
+            const isReadyForWithdrawal = isReadyForPoints; // && isReadyForReferrals;
 
-            if (!isReadyForPoints) {
+            if (!isReadyForWithdrawal) {
                 showStatus(`You need ${MIN_CONVERSION_POINTS.toLocaleString()} Kkoin (10 USDT) to withdraw.`, 'error');
                 return;
             }
-            if (!isReadyForReferrals) {
-                showStatus(`You must refer ${MIN_REFERRALS_FOR_WITHDRAWAL} users before you can withdraw.`, 'error');
-                return;
-            }
+            // if (!isReadyForReferrals) { // REMOVED
+            //     showStatus(`You must refer ${MIN_REFERRALS_FOR_WITHDRAWAL} users before you can withdraw.`, 'error');
+            //     return;
+            // }
             if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(wallet)) {
                 showStatus("Please enter a valid TRC20 wallet address before withdrawing.", 'error');
                 usdtTrc20PageInput.focus();
@@ -1478,7 +1484,8 @@
 
             const wallet = modalTargetWalletEl.textContent;
             
-            if (userData.kkoinPoints < MIN_CONVERSION_POINTS || userData.totalReferrals < MIN_REFERRALS_FOR_WITHDRAWAL || !/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(wallet)) {
+            // FIX: Removed referral check
+            if (userData.kkoinPoints < MIN_CONVERSION_POINTS || !/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(wallet)) {
                 walletErrorEl.textContent = "Withdrawal failed: Minimum requirements not met.";
                 walletErrorEl.classList.remove('hidden');
                 submitWithdrawalBtn.disabled = false;
@@ -1703,27 +1710,24 @@
             if (WebApp) WebApp.HapticFeedback.impactOccurred('light');
             location.reload();
         });
-        
-        // TON Connect Button
-        tonConnectBtn.addEventListener('click', () => {
-            if (WebApp) WebApp.HapticFeedback.impactOccurred('light');
-            if (tonConnectUI) {
-                if (tonConnectUI.connected) {
-                    tonConnectUI.disconnect();
-                } else {
-                    tonConnectUI.openModal();
-                }
-            }
-        });
-        
-        // Go Premium Button
-        goPremiumBtn.addEventListener('click', handlePremiumPurchase);
 
         // Initialize App on Window Load
         window.onload = () => {
             document.getElementById('watch-ad-btn').addEventListener('click', startAdSequence);
-            // FIX: Add listener for TON Withdraw button
-            document.getElementById('ton-withdraw-btn').addEventListener('click', handleTonWithdrawal);
+            // FIX: Add all button listeners inside window.onload
+            tonConnectBtn.addEventListener('click', () => {
+                if (WebApp) WebApp.HapticFeedback.impactOccurred('light');
+                if (tonConnectUI) {
+                    if (tonConnectUI.connected) {
+                        tonConnectUI.disconnect();
+                    } else {
+                        tonConnectUI.openModal();
+                    }
+                }
+            });
+            goPremiumBtn.addEventListener('click', handlePremiumPurchase);
+            tonWithdrawBtn.addEventListener('click', handleTonWithdrawal);
+            
             mainAppLogic(); // Start the main app logic (which replaces initFirebase)
         };
     </script>
