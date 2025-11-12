@@ -75,6 +75,9 @@
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 min-h-screen flex items-start justify-center p-4">
+    
+    <!-- TON Connect UI placeholder -->
+    <div id="ton-connect-btn-placeholder" class="hidden"></div>
 
     <!-- Main Application Container -->
     <div id="app" class="w-full max-w-lg bg-white dark:bg-gray-800 shadow-xl rounded-xl p-6 space-y-6">
@@ -114,7 +117,7 @@
             <!-- Watch Ad Button & Ad Simulation Area -->
             <div id="ad-watch-container" class="bg-blue-50 dark:bg-gray-900 p-4 rounded-lg shadow-inner text-center space-y-3">
                 <p class="text-blue-700 dark:text-blue-300 font-semibold" id="ad-message">Click below to watch an ad.</p>
-                <button id="watch-ad-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                <button id="watch-ad-btn" class_name="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
                     Watch Video Ad (Earn Kkoin)
                 </button>
                 <p id="ad-cooldown" class="hidden text-sm text-red-500 font-medium"></p>
@@ -250,19 +253,20 @@
             <div class="bg-green-50 dark:bg-gray-900 p-4 rounded-lg space-y-2 shadow-inner">
                 <p class="text-sm font-medium text-green-800 dark:text-green-200">Your Equivalent Value:</p>
                 <p id="usdt-equivalent" class="text-3xl font-black text-green-600 dark:text-green-400">$0.00 USDT</p>
-                <p class="text-xs text-green-700 dark:text-green-300">Conversion Rate: 10,000 Kkoin $\approx$ 1 USDT</p>
+                <!-- Conversion rate text hidden -->
+                <p class="text-xs text-green-700 dark:text-green-300 hidden">Conversion Rate: 10,000 Kkoin $\approx$ 1 USDT</p>
                 <p id="withdrawal-min-info" class="text-xs text-red-500 font-semibold">Minimum Withdrawal: 10 USDT (100,000 Kkoin) and 100 Referrals</p>
             </div>
             
-            <!-- TRC20 Wallet Address Input Box -->
-            <div class="space-y-1 bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+            <!-- TRC20 Wallet Address Input Box (HIDDEN) -->
+            <div class="space-y-1 bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hidden">
                 <label for="usdt-trc20-page" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Your TRC20 Wallet Address (USDT)</label>
                 <input type="text" id="usdt-trc20-page" placeholder="Enter or update your TRC20 address" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                 <p id="wallet-address-status" class="text-xs text-gray-500 dark:text-gray-400">Address is required for withdrawal and will be saved.</p>
             </div>
 
-            <!-- Withdrawal Action -->
-            <div class="pt-4 border-t dark:border-gray-700 space-y-4">
+            <!-- Withdrawal Action (HIDDEN) -->
+            <div class="pt-4 border-t dark:border-gray-700 space-y-4 hidden">
                 <button id="open-withdrawal-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md disabled:opacity-50">
                     Need 10 USDT Minimum
                 </button>
@@ -299,7 +303,7 @@
             <!-- Responsive Banner Ad Slot -->
             <div id="responsive-banner-slot" class="w-full flex justify-center pt-2">
                 <!-- This div is the container for the banner ad -->
-                <!-- We will add the banner ad code here via JavaScript -->
+                <!-- The banner ad (e.g., Adsgram or RichAds) will be initialized here via JavaScript -->
             </div>
         </footer>
 
