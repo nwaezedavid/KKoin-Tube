@@ -11,7 +11,10 @@
     <!-- 2. NEW: Supabase SDK -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> --> <!-- MOVED to module -->
 
-    <!-- 3. Ad Network SDKs -->
+    <!-- 3. NEW: TON Connect SDK -->
+    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+
+    <!-- 4. Ad Network SDKs -->
     <!-- RichAds SDK (Network C) -->
     <script src="https://richinfo.co/richpartners/telegram/js/tg-ob.js"></script>
     <!-- Adsgram SDK (Network A) -->
@@ -21,7 +24,7 @@
     <!-- Telega.io SDK (Network D) -->
     <script src="https://inapp.telega.io/sdk/v1/sdk.js"></script>
 
-    <!-- 4. Analytics SDKs -->
+    <!-- 5. Analytics SDKs -->
     <!-- Telemetree SDK (REMOVED) -->
     
     <!-- FIX: Move tganalytics.xyz init function to the global scope in the <head> -->
@@ -51,7 +54,7 @@
         type="text/javascript"
     ></script>
     
-    <!-- 5. Load Tailwind CSS -->
+    <!-- 6. Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Configure Tailwind for Dark Mode -->
     <script>
@@ -84,7 +87,11 @@
             <h1 class="text-3xl font-extrabold text-blue-700 dark:text-blue-400">KKoin Tube</h1>
             <p class="text-sm text-gray-500 dark:text-gray-400">Watch, Earn, Convert.</p>
             <div class="pt-2">
-                <p class="text-gray-600 dark:text-gray-300 text-sm">Current Points:</p>
+                <p class="text-gray-600 dark:text-gray-300 text-sm">
+                    Current Points:
+                    <!-- NEW: Premium Badge -->
+                    <span id="premium-badge" class="hidden ml-1 text-xs font-bold text-yellow-500 bg-yellow-100 dark:text-yellow-300 dark:bg-yellow-900/50 px-2 py-0.5 rounded-full">PRO</span>
+                </p>
                 <p id="kkoin-balance" class="text-5xl font-black text-green-600 dark:text-green-400">0</p>
             </div>
             <!-- REFRESH BUTTON (MOVED) -->
@@ -209,6 +216,36 @@
         <section id="wallet-page" class="page-content space-y-4 hidden">
             <h2 class="text-xl font-bold text-green-700 dark:text-green-400">Wallet & Withdrawal</h2>
 
+            <!-- NEW: Go Premium Section -->
+            <div id="premium-container" class="bg-yellow-50 dark:bg-gray-900 p-4 rounded-lg space-y-3 shadow-inner border border-yellow-300 dark:border-yellow-700">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="sparkles" class="w-6 h-6 text-yellow-500 dark:text-yellow-400"></i>
+                    <h3 class="text-lg font-semibold text-yellow-800 dark:text-yellow-200">Go Premium!</h3>
+                </div>
+                <p class="text-xs text-yellow-700 dark:text-yellow-300">Get **2x Kkoin** on every ad you watch! Upgrade your account for a one-time payment.</p>
+                <button id="go-premium-btn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md">
+                    Upgrade for 0.5 TON
+                </button>
+            </div>
+            <!-- This message shows when user is already premium -->
+            <div id="premium-thanks" class="hidden bg-green-50 dark:bg-gray-900 p-4 rounded-lg shadow-inner border border-green-300 dark:border-green-700 text-center">
+                 <h3 class="text-lg font-semibold text-green-800 dark:text-green-200">You are a Premium User!</h3>
+                 <p class="text-xs text-green-700 dark:text-green-300">You are now earning **2x Kkoin** on all rewarded ads. Thank you for your support!</p>
+            </div>
+
+            <!-- NEW: TON Wallet Section -->
+            <div class="bg-blue-50 dark:bg-gray-900 p-4 rounded-lg space-y-3 shadow-inner">
+                <h3 class="text-lg font-semibold text-blue-800 dark:text-blue-200">Connect Your TON Wallet</h3>
+                <p class="text-xs text-blue-700 dark:text-blue-300">Connect your TON wallet (e.g., Tonkeeper) to enable premium features and $KKOIN token withdrawals.</p>
+                <button id="ton-connect-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md">
+                    Connect TON Wallet
+                </button>
+                <div id="ton-wallet-info" class="hidden text-xs text-center">
+                    <p class="text-green-700 dark:text-green-300">Wallet Connected!</p>
+                    <p id="ton-wallet-address" class="text-gray-700 dark:text-gray-300 font-mono break-all"></p>
+                </div>
+            </div>
+
             <!-- Conversion Info -->
             <div class="bg-green-50 dark:bg-gray-900 p-4 rounded-lg space-y-2 shadow-inner">
                 <p class="text-sm font-medium text-green-800 dark:text-green-200">Your Equivalent Value:</p>
@@ -217,7 +254,7 @@
                 <p id="withdrawal-min-info" class="text-xs text-red-500 font-semibold">Minimum Withdrawal: 10 USDT (100,000 Kkoin) and 100 Referrals</p>
             </div>
             
-            <!-- NEW: Wallet Address Input Box -->
+            <!-- TRC20 Wallet Address Input Box -->
             <div class="space-y-1 bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
                 <label for="usdt-trc20-page" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Your TRC20 Wallet Address (USDT)</label>
                 <input type="text" id="usdt-trc20-page" placeholder="Enter or update your TRC20 address" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
@@ -262,7 +299,7 @@
             <!-- Responsive Banner Ad Slot -->
             <div id="responsive-banner-slot" class="w-full flex justify-center pt-2">
                 <!-- This div is the container for the banner ad -->
-                <!-- The banner ad (e.g., Adsgram or RichAds) will be initialized here via JavaScript -->
+                <!-- We will add the banner ad code here via JavaScript -->
             </div>
         </footer>
 
@@ -386,6 +423,7 @@
         let AdsgramController = null; // Controller for Adsgram SDK
         let TelegaAdsController = null; // Controller for Telega.io SDK
         let TelemetreePixel = null; // Controller for Telemetree Analytics
+        let tonConnectUI = null; // NEW: Controller for TON Wallet
         
         // NEW: Global WebApp constant
         const WebApp = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
@@ -400,6 +438,7 @@
             totalReferralEarnings: 0,
             totalAdsWatched: 0,
             hasReceivedInitialBonus: false,
+            is_premium: false, // NEW: Premium status
             // Supabase-specific fields
             id: null, // This will be the Telegram User ID (as string)
             created_at: null
@@ -414,6 +453,11 @@
         const REFERRAL_INITIAL_BONUS_POINTS = 500; // Half of the new bonus
         const MIN_REFERRALS_FOR_WITHDRAWAL = 100; // Hard requirement
         const AD_WATCH_COOLDOWN_MS = 30000; // 30 seconds cooldown between ad watches
+        
+        // --- NEW: PREMIUM CONFIG ---
+        const PREMIUM_COST_TON = 0.5; // Cost in TON
+        // IMPORTANT: PASTE YOUR PERSONAL TON WALLET ADDRESS HERE
+        const YOUR_TON_WALLET_ADDRESS = "YOUR_TON_WALLET_ADDRESS_HERE"; // e.g., UQ...
         
         // --- AD NETWORK TIMEOUTS (NEW) ---
         const AD_NETWORK_TIMEOUT_MS = 3000; // 3 seconds for most networks
@@ -488,6 +532,15 @@
         const addToHomeBtn = document.getElementById('add-to-home-btn');
         const closeHomeScreenModalBtn = document.getElementById('close-home-screen-modal');
         const refreshBtn = document.getElementById('refresh-btn');
+        // TON UI Elements
+        const tonConnectBtn = document.getElementById('ton-connect-btn');
+        const tonWalletInfoEl = document.getElementById('ton-wallet-info');
+        const tonWalletAddressEl = document.getElementById('ton-wallet-address');
+        // Premium UI Elements
+        const premiumContainerEl = document.getElementById('premium-container');
+        const premiumThanksEl = document.getElementById('premium-thanks');
+        const goPremiumBtn = document.getElementById('go-premium-btn');
+        const premiumBadgeEl = document.getElementById('premium-badge');
         
 
         // --- TELEGRAM INIT & THEME ---
@@ -593,29 +646,44 @@
                  console.warn("Telega.io SDK (sdk.js) not found. Telega.io ads will be skipped.");
              }
         }
+        
+        // --- NEW: TON CONNECT INITIALIZATION ---
+        function initTonConnect() {
+            if (typeof window.TON_CONNECT_UI === 'undefined') {
+                console.error("TON Connect UI SDK not found.");
+                return;
+            }
+            
+            // 1. Initialize the TON Connect UI
+            tonConnectUI = new window.TON_CONNECT_UI.TonConnectUI({
+                // CRITICAL: You must host this manifest.json file publicly.
+                // It tells wallets (like Tonkeeper) what your app is.
+                manifestUrl: 'https://nwaezedavid.github.io/KKoin-Tube/tonconnect-manifest.json',
+                buttonRootId: 'ton-connect-btn-placeholder' // We use our own button
+            });
+
+            // 2. Subscribe to wallet connection status changes
+            tonConnectUI.onStatusChange(wallet => {
+                if (wallet) {
+                    // User connected a wallet
+                    const address = wallet.account.address;
+                    const friendlyAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
+                    
+                    tonWalletAddressEl.textContent = friendlyAddress;
+                    tonWalletInfoEl.classList.remove('hidden');
+                    tonConnectBtn.textContent = 'Disconnect Wallet';
+                    if (WebApp) WebApp.HapticFeedback.notificationOccurred('success');
+                } else {
+                    // User disconnected
+                    tonWalletAddressEl.textContent = '';
+                    tonWalletInfoEl.classList.add('hidden');
+                    tonConnectBtn.textContent = 'Connect TON Wallet';
+                }
+            });
+        }
 
         async function initTelemetree(uid) {
-            try {
-                if (typeof window.telemetree !== 'undefined') {
-                    // FIX: Re-enable automatic tracking. This is the correct way.
-                    // The SDK is smart enough to wait for the Telegram context.
-                    TelemetreePixel = await telemetree({
-                        projectId: "189ea164-4e5c-4055-bb8d-0972f604679e",
-                        apiKey: "c6968991-8a2b-4d45-8d11-a4a2da3bdf41",
-                        isTelegramContext: true,
-                        logLevel: 'info',
-                        trackGroup: "medium" // Re-enable automatic session/pageView tracking
-                    });
-                    
-                    // FIX: Remove manual tracking. The SDK will handle this.
-                    console.log("Telemetree Analytics Initialized (Automatic Tracking).");
-                    
-                } else {
-                    console.warn("Telemetree SDK (telemetree-pixel.js) not found. Analytics will be skipped.");
-                }
-            } catch (error) {
-                console.error("Telemetree initialization failed:", error);
-            }
+            // This function is intentionally left blank as Telemetree was removed
         }
         
         // --- NEW: INTERSTITIAL AD LOGIC ---
@@ -627,9 +695,6 @@
             }
             
             console.log("Attempting to show interstitial ad...");
-            if (TelemetreePixel) {
-                TelemetreePixel.track("adLoadAttempt", { network: "Monetag Interstitial" });
-            }
 
             const zoneId = 10143671; // Using the same rewarded zone ID
             const showAdFunction = window[`show_${zoneId}`];
@@ -639,9 +704,6 @@
             if (showAdFunction) {
                 try {
                     showAdFunction({ type: 'inApp', inAppSettings: inAppSettings });
-                    if (TelemetreePixel) {
-                        TelemetreePixel.track("adViewed", { network: "Monetag Interstitial", rewarded: false });
-                    }
                 } catch (e) {
                     console.error("Monetag In-App Interstitial error:", e);
                 }
@@ -673,13 +735,7 @@
                 }
             });
             
-            // Track page view in analytics
-            if (TelemetreePixel) {
-                // This call is for subsequent page views, not the initial one.
-                TelemetreePixel.track("pageView", {
-                    page: pageId
-                });
-            }
+            // Track page view in analytics (Telemetree removed)
             
             lucide.createIcons();
             
@@ -711,8 +767,7 @@
                     userIdDisplayEl.textContent = userId.toString().substring(0, 8) + "...";
                     referralLinkEl.value = `https://t.me/${TELEGRAM_BOT_USERNAME}?start=${userId}`;
                     
-                    // Await Telemetree init *before* any other setup.
-                    await initTelemetree(userId); 
+                    // Await Telemetree init *before* any other setup. (REMOVED)
                     
                     // Fetch or create user profile
                     await setupUserListener(userId); 
@@ -721,6 +776,7 @@
                     initAdsgramController(userId);
                     initRichAdsController(userId);
                     initTelegaController(userId);
+                    initTonConnect(); // Initialize TON Connect
                     
                     lucide.createIcons();
                 } else {
@@ -764,7 +820,8 @@
                     referrerId: getUrlReferrerId(), // Get referrerId from URL *before* creating user
                     lastAdWatch: new Date().toISOString(),
                     totalAdsWatched: 0,
-                    hasReceivedInitialBonus: false
+                    hasReceivedInitialBonus: false,
+                    is_premium: false // NEW: Premium status
                 };
                 
                 const { error: insertError } = await supabaseClient
@@ -909,11 +966,7 @@
                     referrerInfoEl.classList.remove('hidden');
                     referrerIdDisplayEl.textContent = userData.referrerId;
                     
-                    if (TelemetreePixel) {
-                        TelemetreePixel.track("referralCompleted", {
-                            referrerId: referrerId
-                        });
-                    }
+                    // Telemetree call REMOVED
                 }
             } catch (error) {
                 console.error("Error processing referral event:", error);
@@ -964,6 +1017,17 @@
             if (userData.referrerId) {
                 referrerInfoEl.classList.remove('hidden');
                 referrerIdDisplayEl.textContent = userData.referrerId;
+            }
+            
+            // NEW: Update Premium UI
+            if (userData.is_premium) {
+                premiumBadgeEl.classList.remove('hidden');
+                premiumContainerEl.classList.add('hidden');
+                premiumThanksEl.classList.remove('hidden');
+            } else {
+                premiumBadgeEl.classList.add('hidden');
+                premiumContainerEl.classList.remove('hidden');
+                premiumThanksEl.classList.add('hidden');
             }
             
             updateAdButtonState();
@@ -1024,13 +1088,7 @@
             if (networkConfig.name === 'Telega.io') {
                  return { points: 0, network: networkConfig.name, isRewarded: false };
             }
-            // Check for Monetag non-rewarded format
-            const monetagConfigIndex = (userData.totalAdsWatched) % MONETAG_CONFIGS.length;
-            const monetagConfig = MONETAG_CONFIGS[monetagConfigIndex];
-            if (networkConfig.name === 'Monetag' && monetagConfig.type === 'non-rewarded') {
-                return { points: 0, network: networkConfig.name, isRewarded: false };
-            }
-
+            // Check for Monetag non-rewarded format (which is now handled by Interstitial)
             
             const userLocation = simulateUserLocation();
             const effectiveCPM = networkConfig.base_cpm * userLocation.multiplier;
@@ -1043,6 +1101,11 @@
 
             finalPoints += Math.floor(Math.random() * (POINTS_RANDOM_VARIATION * 2 + 1)) - POINTS_RANDOM_VARIATION;
             finalPoints = Math.max(finalPoints, MIN_POINTS_PER_AD);
+            
+            // --- NEW: PREMIUM BONUS ---
+            if (userData.is_premium) {
+                finalPoints = finalPoints * 2;
+            }
 
             return { 
                 points: finalPoints, 
@@ -1072,12 +1135,7 @@
 
         function adLoadFailed(networkName, reason = 'failed to load') {
             console.warn(`Ad from ${networkName} ${reason}.`);
-            if (TelemetreePixel) {
-                TelemetreePixel.track("adLoadFailed", {
-                    network: networkName,
-                    reason: reason
-                });
-            }
+            // Telemetree call REMOVED
         }
         
         // --- AD NETWORK LOADERS (PROMISE-BASED) ---
@@ -1101,9 +1159,7 @@
                 AdsgramController.showRewardedAd()
                     .then(() => {
                         console.log("Adsgram ad confirmed complete.");
-                        if (TelemetreePixel) {
-                            TelemetreePixel.track("adCallbackSuccess", { network: "Adsgram.ai" });
-                        }
+                        // Telemetree call REMOVED
                     })
                     .catch(e => {
                         console.warn(`Adsgram ad callback error: ${e.message}`);
@@ -1137,9 +1193,7 @@
                     
                     adPromise.then(() => {
                         console.log("Monetag ad confirmed complete.");
-                        if (TelemetreePixel) {
-                            TelemetreePixel.track("adCallbackSuccess", { network: "Monetag" });
-                        }
+                        // Telemetree call REMOVED
                     }).catch(e => {
                          console.warn(`Monetag ad callback error: ${e.message}`);
                     });
@@ -1206,9 +1260,7 @@
             adDebugEl.classList.add('hidden');
             if (WebApp) WebApp.HapticFeedback.impactOccurred('medium');
             
-            if (TelemetreePixel) {
-                TelemetreePixel.track("watchAdClicked");
-            }
+            // Telemetree call REMOVED
 
             const networkIndex = userData.totalAdsWatched % AD_NETWORK_CONFIGS.length;
             
@@ -1228,9 +1280,7 @@
                 showAdModal(currentNetwork.name);
                 console.log(`--- Waterfall: Trying ${currentNetwork.name} ---`);
                 
-                if (TelemetreePixel) {
-                    TelemetreePixel.track("adLoadAttempt", { network: currentNetwork.name });
-                }
+                // Telemetree call REMOVED
 
                 try {
                     const timeout = currentNetwork.timeout;
@@ -1258,13 +1308,7 @@
                             .eq('id', userId);
                         if (error) throw error;
                             
-                        if (TelemetreePixel) {
-                            TelemetreePixel.track("adViewed", {
-                                network: currentNetwork.name,
-                                rewarded: false,
-                                points: 0
-                            });
-                        }
+                        // Telemetree call REMOVED
                     }
                     break; 
 
@@ -1317,15 +1361,7 @@
                 debugLocationEl.textContent = adResult.locationTier;
                 adDebugEl.classList.remove('hidden');
                 
-                if (TelemetreePixel) {
-                    TelemetreePixel.track("adViewed", {
-                        network: adResult.network,
-                        rewarded: true,
-                        points: pointsEarned,
-                        locationTier: adResult.locationTier,
-                        effectiveCPM: adResult.effectiveCPM
-                    });
-                }
+                // Telemetree call REMOVED
 
             } catch (error) {
                 console.error("Error updating points:", error);
@@ -1379,9 +1415,7 @@
             withdrawalModal.classList.remove('hidden');
             withdrawalModal.classList.add('flex');
             
-            if (TelemetreePixel) {
-                TelemetreePixel.track("withdrawalModalOpened");
-            }
+            // Telemetree call REMOVED
         }
 
         function closeWithdrawalModal() {
@@ -1424,12 +1458,7 @@
                 closeWithdrawalModal();
                 showStatus(`Withdrawal request for $10.00 USDT submitted to ${wallet}. Processing may take 24-48 hours.`, 'success');
                 
-                if (TelemetreePixel) {
-                    TelemetreePixel.track("withdrawalSubmitted", {
-                        points: pointsToDeduct,
-                        usdt_value: 10
-                    });
-                }
+                // Telemetree call REMOVED
 
             } catch (error) {
                 console.error("Error during withdrawal:", error);
@@ -1473,10 +1502,84 @@
             }
             window.open(url, '_blank');
             
-            if (TelemetreePixel) {
-                TelemetreePixel.track("referralShared", {
-                    platform: platform
-                });
+            // Telemetree call REMOVED
+        }
+        
+        // --- NEW: PREMIUM PURCHASE LOGIC ---
+        async function handlePremiumPurchase() {
+            if (WebApp) WebApp.HapticFeedback.impactOccurred('medium');
+
+            if (userData.is_premium) {
+                showStatus("You are already a Premium user!", 'info');
+                return;
+            }
+            
+            if (!tonConnectUI || !tonConnectUI.connected) {
+                showStatus("Please connect your TON wallet first.", 'error');
+                if (WebApp) WebApp.HapticFeedback.notificationOccurred('error');
+                // Optional: open the wallet connection modal automatically
+                // tonConnectUI.openModal();
+                return;
+            }
+            
+            if (YOUR_TON_WALLET_ADDRESS === "YOUR_TON_WALLET_ADDRESS_HERE" || !YOUR_TON_WALLET_ADDRESS) {
+                 showStatus("Admin error: Payment address not set.", 'error');
+                 console.error("CRITICAL: YOUR_TON_WALLET_ADDRESS constant is not set.");
+                 return;
+            }
+
+            // Convert TON to nanotons (1 TON = 1,000,000,000 nanotons)
+            const amountNanotons = (PREMIUM_COST_TON * 1000000000).toString();
+
+            const transaction = {
+                validUntil: Math.floor(Date.now() / 1000) + 600, // 10 minutes from now
+                messages: [
+                    {
+                        address: YOUR_TON_WALLET_ADDRESS,
+                        amount: amountNanotons,
+                        // payload: "base64_encoded_payload_here" // Optional payload
+                    }
+                ]
+            };
+
+            try {
+                showStatus("Please confirm the transaction in your wallet...", 'info');
+                const result = await tonConnectUI.sendTransaction(transaction);
+                console.log("Transaction sent:", result);
+
+                // You should now verify this transaction on the backend using the `result.boc`
+                // But for this client-side example, we will optimistically grant premium
+                
+                await updateUserToPremium();
+
+            } catch (error) {
+                console.error("TON Transaction error:", error);
+                showStatus(`Payment failed: ${error.message || 'Transaction was rejected.'}`, 'error');
+                if (WebApp) WebApp.HapticFeedback.notificationOccurred('error');
+            }
+        }
+        
+        async function updateUserToPremium() {
+            if (userData.is_premium) return; // Already done
+
+            try {
+                const { error } = await supabaseClient
+                    .from('users')
+                    .update({ is_premium: true })
+                    .eq('id', userId);
+                
+                if (error) throw error;
+
+                // Manually update local data to refresh UI
+                userData.is_premium = true;
+                updateDashboard();
+                
+                showStatus("Congratulations! You are now a Premium user.", 'success');
+                if (WebApp) WebApp.HapticFeedback.notificationOccurred('success');
+
+            } catch (error) {
+                console.error("Failed to update user to premium in DB:", error);
+                showStatus("Payment was successful, but failed to update your account. Please contact support.", 'error');
             }
         }
 
@@ -1554,6 +1657,21 @@
             if (WebApp) WebApp.HapticFeedback.impactOccurred('light');
             location.reload();
         });
+        
+        // TON Connect Button
+        tonConnectBtn.addEventListener('click', () => {
+            if (WebApp) WebApp.HapticFeedback.impactOccurred('light');
+            if (tonConnectUI) {
+                if (tonConnectUI.connected) {
+                    tonConnectUI.disconnect();
+                } else {
+                    tonConnectUI.openModal();
+                }
+            }
+        });
+        
+        // Go Premium Button
+        goPremiumBtn.addEventListener('click', handlePremiumPurchase);
 
         // Initialize App on Window Load
         window.onload = () => {
