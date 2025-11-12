@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- FIX: Add class for dark mode toggling -->
 <html lang="en" class="">
 <head>
     <meta charset="UTF-8">
@@ -7,20 +6,22 @@
     <title>KKoin Tube Mini App</title>
     <!-- 1. MANDATORY: Load the Telegram Web App Script -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- 2. NEW: Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    <!-- 2. Ad Network SDKs -->
+    <!-- 3. Ad Network SDKs -->
     <!-- RichAds SDK (Network C) -->
     <script src="https://richinfo.co/richpartners/telegram/js/tg-ob.js"></script>
     <!-- Adsgram SDK (Network A) -->
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
     <!-- Monetag SDK (Network B - Rewarded) -->
     <script src='//libtl.com/sdk.js' data-zone='10143671' data-sdk='show_10143671'></script>
-    <!-- Monetag SDK (Banner) - REMOVED, Adsgram is used -->
     <!-- Telega.io SDK (Network D) -->
     <script src="https://inapp.telega.io/sdk/v1/sdk.js"></script>
 
-    <!-- 3. Analytics SDKs -->
-    <script src="https://s3.eu-central-1.amazonaws.com/cdn.telemetree.io/telemetree-pixel.js"></script>
+    <!-- 4. Analytics SDKs -->
+    <!-- Telemetree SDK (REMOVED) -->
     
     <!-- FIX: Move tganalytics.xyz init function to the global scope in the <head> -->
     <script>
@@ -49,7 +50,7 @@
         type="text/javascript"
     ></script>
     
-    <!-- 4. Load Tailwind CSS -->
+    <!-- 5. Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Configure Tailwind for Dark Mode -->
     <script>
@@ -257,9 +258,10 @@
                 <div class="w-16"></div> 
             </div>
             
-            <!-- Adsgram Banner Ad Slot (Replaced Monetag) -->
-            <div id="adsgram-banner-slot" class="w-full flex justify-center pt-2">
-                <!-- This div is the container for the Adsgram banner -->
+            <!-- Responsive Banner Ad Slot -->
+            <div id="responsive-banner-slot" class="w-full flex justify-center pt-2">
+                <!-- This div is the container for the banner ad -->
+                <!-- We will add the banner ad code here via JavaScript -->
             </div>
         </footer>
 
@@ -349,56 +351,36 @@
         };
     </script>
 
-    <!-- Firebase Imports -->
+    <!-- Supabase Imports (NEW) -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, query, where, addDoc, getDocs, runTransaction, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Set Firebase Log Level for debugging
-        setLogLevel('debug');
-
-        // --- CRITICAL: FIREBASE SECURITY RULES ---
-        /* You MUST set these rules in your Firebase Console for the app to work.
-            Go to: Firebase -> Firestore Database -> Rules -> Edit rules
-            
-            rules_version = '2';
-            service cloud.firestore {
-              match /databases/{database}/documents {
-
-                // Rule 1: User's Private Data (kkoin_data/profile)
-                // Allows any authenticated user to read/write ONLY to their specific profile document.
-                match /artifacts/{appId}/users/{userId}/kkoin_data/{documentId} {
-                    allow read, write: if request.auth != null && request.auth.uid == userId;
-                }
-
-                // Rule 2: Public Referral Events (Public Read, Authenticated Write)
-                // Allows any authenticated user to read all referral events (to calculate total referral count)
-                // and allows any authenticated user to create a new referral event when they sign up.
-                match /artifacts/{appId}/public/data/referral_events/{documentId} {
-                  allow read: if request.auth != null;
-                  allow create: if request.auth != null;
-                }
-              }
-            }
-        */
-        // --- END OF SECURITY RULES ---
-
+        // All JavaScript logic will now be in this single module script
+        // FIX: Get createClient from the global `window.supabase` object
+        const { createClient } = window.supabase; 
+        
         // --- GLOBAL CONFIG & INITIALIZATION ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-kkoin-app';
-        const firebaseConfig = {
-            apiKey: "AIzaSyBIRfyXKD-wOStJe1HQ_90ICCa1loRCLec",
-            authDomain: "kkoin-tube.firebaseapp.com",
-            projectId: "kkoin-tube",
-            storageBucket: "kkoin-tube.firebasestorage.app",
-            messagingSenderId: "549641344693",
-            appId: "1:549641344693:web:13ad7b7761ee6c900790fc",
-            measurementId: "G-R1R2GPT6NZ"
-        };
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // Supabase Config (You must provide these)
+        const SUPABASE_URL = 'https://ppuvydqdohuusrczehhf.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwdXZ5ZHFkb2h1dXNyY3plaGhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5NDUwODEsImV4cCI6MjA3ODUyMTA4MX0.0hC1qpHNs_5FX1jmiTf-NqNvHWd0WSy8ok4r-t1yKyc';
 
-        let app, db, auth, userId = null;
+        // Initialize Supabase
+        let supabaseClient = null;
+        if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+             try {
+                supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log("Supabase client initialized.");
+             } catch (e) {
+                console.error("Supabase initialization failed:", e.message);
+             }
+        } else {
+            console.warn("Supabase URL or Anon Key is missing. Database functionality will be disabled.");
+        }
+
+
+        // --- App-specific Config (Moved from Firebase) ---
+        const appId = 'default-kkoin-app'; // Supabase doesn't use this, but we keep it for now
+        let userId = null; // This will be the Telegram User ID
+        
         let AdsgramController = null; // Controller for Adsgram SDK
         let TelegaAdsController = null; // Controller for Telega.io SDK
         let TelemetreePixel = null; // Controller for Telemetree Analytics
@@ -415,7 +397,10 @@
             totalReferrals: 0, 
             totalReferralEarnings: 0,
             totalAdsWatched: 0,
-            hasReceivedInitialBonus: false
+            hasReceivedInitialBonus: false,
+            // Supabase-specific fields
+            id: null, // This will be the Telegram User ID (as string)
+            created_at: null
         };
         let currentPage = 'dashboard';
 
@@ -430,7 +415,6 @@
         
         // --- AD NETWORK TIMEOUTS (NEW) ---
         const AD_NETWORK_TIMEOUT_MS = 3000; // 3 seconds for most networks
-        // const MONETAG_TIMEOUT_MS = 10000; // No longer needed, we reward immediately
 
         const SOCIAL_SHARE_MESSAGE = "🚀 Earn crypto effortlessly with KKoin Tube! Watch short videos, earn Kkoin, and withdraw to USDT. Join me now using my unique link and get a bonus start! Don't miss out:";
 
@@ -466,8 +450,6 @@
         ];
 
         // --- DOM Elements ---
-        // FIX: Moved all DOM element declarations outside of functions
-        // to prevent ReferenceError
         const statusMessageEl = document.getElementById('status-message');
         const balanceEl = document.getElementById('kkoin-balance');
         const navBtns = document.querySelectorAll('.nav-btn');
@@ -504,11 +486,7 @@
         const addToHomeBtn = document.getElementById('add-to-home-btn');
         const closeHomeScreenModalBtn = document.getElementById('close-home-screen-modal');
         const refreshBtn = document.getElementById('refresh-btn');
-
-
-        // --- FIREBASE PATHS ---
-        const getUserDocRef = (uid) => doc(db, 'artifacts', appId, 'users', uid, 'kkoin_data', 'profile');
-        const getReferralEventsRef = () => collection(db, 'artifacts', appId, 'public', 'data', 'referral_events');
+        
 
         // --- TELEGRAM INIT & THEME ---
         function applyTheme(colorScheme) {
@@ -570,14 +548,14 @@
                 if (typeof window.Adsgram.createBanner === 'function') {
                     window.Adsgram.createBanner({
                         blockId: "task-16930", // Your Banner ID
-                        container: "adsgram-banner-slot"
+                        container: "responsive-banner-slot" // Use new responsive slot
                     });
                     console.log("Adsgram Controller and Banner Initialized.");
                 } else if (typeof window.Adsgram.initBanner === 'function') {
                      // Fallback to old function just in case
                      window.Adsgram.initBanner({
                         blockId: "task-16930", // Your Banner ID
-                        container: "adsgram-banner-slot"
+                        container: "responsive-banner-slot"
                     });
                     console.log("Adsgram Controller and Banner Initialized (using initBanner).");
                 } else {
@@ -707,108 +685,152 @@
             showInterstitialAd();
         }
 
-        // --- FIREBASE SETUP & AUTHENTICATION ---
+        // --- SUPABASE/AUTH LOGIC (REPLACES FIREBASE) ---
 
-        async function initFirebase() {
+        async function mainAppLogic() {
             try {
-                if (Object.keys(firebaseConfig).length === 0) {
-                    showStatus("Firebase configuration missing. Running in simulated read-only mode.", 'error');
+                if (!WebApp) {
+                    showStatus("App must be run inside Telegram.", 'error');
+                    console.error("Not running in Telegram Web App context.");
                     return;
                 }
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
+                
+                if (!supabaseClient) {
+                    showStatus("Database connection failed.", 'error');
+                    console.warn("Supabase client not initialized.");
+                    return;
+                }
 
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        userIdDisplayEl.textContent = userId.substring(0, 8) + "..."; // Show partial ID
-                        referralLinkEl.value = `https://t.me/${TELEGRAM_BOT_USERNAME}?start=${userId}`;
-                        
-                        // FIX: Await Telemetree init *before* any other setup.
-                        // This ensures the user is set before other events (like pageView) are tracked.
-                        await initTelemetree(userId); 
-                        
-                        setupUserListener(userId); 
-                        
-                        // Initialize all Ad SDKs
-                        initAdsgramController(userId);
-                        initRichAdsController(userId);
-                        initTelegaController(userId);
-                        
-                        lucide.createIcons();
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                });
+                const tgUser = WebApp.initDataUnsafe.user;
+                
+                if (tgUser) {
+                    userId = tgUser.id.toString(); // Use Telegram ID as Supabase ID
+                    userIdDisplayEl.textContent = userId.substring(0, 8) + "...";
+                    referralLinkEl.value = `https://t.me/${TELEGRAM_BOT_USERNAME}?start=${userId}`;
+                    
+                    // Await Telemetree init *before* any other setup.
+                    await initTelemetree(userId); 
+                    
+                    // Fetch or create user profile
+                    await setupUserListener(userId); 
+                    
+                    // Initialize all Ad SDKs
+                    initAdsgramController(userId);
+                    initRichAdsController(userId);
+                    initTelegaController(userId);
+                    
+                    lucide.createIcons();
+                } else {
+                    showStatus("Could not identify Telegram user.", 'error');
+                }
 
             } catch (error) {
-                console.error("Firebase initialization or authentication failed:", error);
-                showStatus(`Authentication Error: ${error.message}`, 'error');
+                console.error("Main app logic initialization failed:", error);
+                showStatus(`App Error: ${error.message}`, 'error');
             }
         }
 
-        // --- CORE DATA LISTENER ---
+        // --- CORE DATA LISTENER (SUPABASE) ---
 
-        function setupUserListener(uid) {
-            const userDocRef = getUserDocRef(uid);
-            const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    userData = { ...userData, ...docSnap.data() };
-                    usdtTrc20PageInput.value = userData.walletAddress || '';
-                    updateDashboard();
-                } else {
-                    setDoc(userDocRef, {
-                        kkoinPoints: 0,
-                        walletAddress: '',
-                        referrerId: userData.referrerId,
-                        lastAdWatch: 0,
-                        totalAdsWatched: 0,
-                        hasReceivedInitialBonus: false
-                    }).then(() => {
-                        console.log("New user profile created.");
-                        updateDashboard();
-                    }).catch(err => {
-                        console.error("Error creating user profile:", err);
-                        showStatus("Failed to create user profile data.", 'error');
-                    });
-                }
+        async function setupUserListener(uid) {
+            // 1. Try to fetch the user
+            const { data, error } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('id', uid)
+                .single(); // Get one record or null
+
+            if (error && error.code !== 'PGRST116') { // PGRST116 = "Row not found"
+                console.error("Error fetching user data:", error);
+                showStatus("Error fetching user data.", 'error');
+                return;
+            }
+
+            if (data) {
+                // User exists
+                userData = { ...userData, ...data };
+                usdtTrc20PageInput.value = userData.walletAddress || '';
+                updateDashboard();
+                console.log("User profile loaded from Supabase:", userData);
+            } else {
+                // User does not exist, create them
+                const newProfile = {
+                    id: uid, // Set Telegram ID as primary key
+                    kkoinPoints: 0,
+                    walletAddress: '',
+                    referrerId: getUrlReferrerId(), // Get referrerId from URL *before* creating user
+                    lastAdWatch: new Date().toISOString(),
+                    totalAdsWatched: 0,
+                    hasReceivedInitialBonus: false
+                };
                 
-                checkInitialReferral(uid);
-                unsubscribe();
-                setupPermanentListeners(uid);
+                const { error: insertError } = await supabaseClient
+                    .from('profiles')
+                    .insert(newProfile);
 
-            }, (error) => {
-                console.error("Error listening to user data:", error);
-                showStatus("Error fetching real-time data.", 'error');
-            });
+                if (insertError) {
+                    console.error("Error creating user profile:", insertError);
+                    showStatus("Failed to create user profile.", 'error');
+                } else {
+                    userData = { ...userData, ...newProfile };
+                    updateDashboard();
+                    console.log("New user profile created in Supabase.");
+                }
+            }
+            
+            // Now that we have a user, check for referrals
+            checkInitialReferral(uid);
+            
+            // After initial load, set up permanent listeners
+            setupPermanentListeners(uid);
         }
         
         function setupPermanentListeners(uid) {
-             onSnapshot(getUserDocRef(uid), (docSnap) => {
-                 if (docSnap.exists()) {
-                    userData = { ...userData, ...docSnap.data() };
+            // 1. Listen to user's profile for changes
+            supabaseClient
+                .channel(`profile:${uid}`)
+                .on('postgres_changes', { 
+                    event: 'UPDATE', 
+                    schema: 'public', 
+                    table: 'profiles', 
+                    filter: `id=eq.${uid}` 
+                }, 
+                (payload) => {
+                    console.log('Profile updated via Supabase Realtime:', payload.new);
+                    userData = { ...userData, ...payload.new };
                     usdtTrc20PageInput.value = userData.walletAddress || '';
                     updateDashboard();
-                 }
-             }, (error) => {
-                 console.error("Error on permanent user listener:", error);
-             });
+                })
+                .subscribe();
             
-            const q = query(getReferralEventsRef(), where("referrerId", "==", uid));
-            onSnapshot(q, (snapshot) => {
-                userData.totalReferrals = snapshot.docs.length;
-                userData.totalReferralEarnings = snapshot.docs.length * REFERRAL_BONUS_POINTS;
+            // 2. Listen to referrals (This is harder, needs a count)
+            // For simplicity, we will just re-fetch the count on page load
+            // A full realtime count would require a database function (pg_notify)
+            // or a separate listener on the referral_events table.
+            fetchReferralCount(uid);
+            
+            // Re-fetch count every time referral page is opened
+            document.querySelector('[data-page="referral"]').addEventListener('click', () => fetchReferralCount(uid));
+        }
+        
+        async function fetchReferralCount(uid) {
+            const { count, error } = await supabaseClient
+                .from('referral_events')
+                .select('*', { count: 'exact', head: true }) // head:true only gets the count
+                .eq('referrerId', uid);
 
+            if (error) {
+                console.error("Error fetching referral count:", error);
+            } else {
+                userData.totalReferrals = count;
+                userData.totalReferralEarnings = count * REFERRAL_BONUS_POINTS;
                 referralCountDisplayEl.textContent = userData.totalReferrals.toLocaleString();
                 referralEarningsDisplayEl.textContent = userData.totalReferralEarnings.toLocaleString();
                 updateDashboard();
-            }, (error) => {
-                console.error("Error listening to referral events:", error);
-            });
+            }
         }
         
-        // --- REFERRAL LOGIC ---
+        // --- REFERRAL LOGIC (SUPABASE) ---
         
         function getUrlReferrerId() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -822,50 +844,82 @@
         async function checkInitialReferral(uid) {
             const urlReferrerId = getUrlReferrerId();
             
+            // userData.referrerId is from the DB. urlReferrerId is from the URL.
+            // Only run if URL has referrer AND user profile doesn't.
             if (urlReferrerId && !userData.referrerId) {
-                await updateDoc(getUserDocRef(uid), { referrerId: urlReferrerId })
-                    .catch(err => console.error("Could not set new user's referrerId:", err));
+                // Set the referrerId on the user's new profile
+                const { error } = await supabaseClient
+                    .from('profiles')
+                    .update({ referrerId: urlReferrerId })
+                    .eq('id', uid);
+                    
+                if (error) console.error("Could not set new user's referrerId:", error);
+                
+                // Log the public event and grant bonuses
                 await logReferralEvent(urlReferrerId, uid);
                 
             } else if (userData.referrerId) {
+                // If referrer is already set, just display the info
                 referrerInfoEl.classList.remove('hidden');
                 referrerIdDisplayEl.textContent = userData.referrerId;
             }
         }
         
         async function logReferralEvent(referrerId, referredId) {
-            if (referrerId === referredId) return;
+            if (referrerId === referredId) return; // Can't refer self
 
             try {
-                const q = query(getReferralEventsRef(), 
-                    where("referredId", "==", referredId)
-                );
-                const snapshot = await getDocs(q);
+                // Check if this referral has already been logged
+                const { data, error: checkError } = await supabaseClient
+                    .from('referral_events')
+                    .select('id')
+                    .eq('referredId', referredId)
+                    .limit(1);
 
-                if (snapshot.empty) {
-                    await addDoc(getReferralEventsRef(), {
-                        referrerId: referrerId,
-                        referredId: referredId,
-                        timestamp: serverTimestamp(),
-                        bonusPoints: REFERRAL_BONUS_POINTS,
-                        status: 'claimed'
-                    });
+                if (checkError) throw checkError;
 
-                    const referrerDocRef = getUserDocRef(referrerId);
-                    await runTransaction(db, async (transaction) => {
-                        const referrerDoc = await transaction.get(referrerDocRef);
-                        if (referrerDoc.exists()) {
-                            const newPoints = (referrerDoc.data().kkoinPoints || 0) + REFERRAL_BONUS_POINTS;
-                            transaction.update(referrerDocRef, { kkoinPoints: newPoints });
-                        }
-                    });
-                    
-                    if (!userData.hasReceivedInitialBonus) {
-                        const referredDocRef = getUserDocRef(referredId);
-                        await updateDoc(referredDocRef, { 
-                            kkoinPoints: (userData.kkoinPoints || 0) + REFERRAL_INITIAL_BONUS_POINTS,
-                            hasReceivedInitialBonus: true
+                if (data.length === 0) {
+                    // 1. Create public referral event document
+                    const { error: eventError } = await supabaseClient
+                        .from('referral_events')
+                        .insert({
+                            referrerId: referrerId,
+                            referredId: referredId,
+                            bonusPoints: REFERRAL_BONUS_POINTS,
+                            status: 'claimed'
                         });
+                    if (eventError) throw eventError;
+
+                    // 2. Grant bonus to the referrer (using Supabase RPC function 'increment_points')
+                    // This is safer than client-side math.
+                    // You must create this function in your Supabase SQL Editor:
+                    /*
+                        create function increment_points (user_id bigint, points_to_add bigint)
+                        returns void as
+                        $$
+                          update public.profiles
+                          set "kkoinPoints" = "kkoinPoints" + points_to_add
+                          where id = user_id;
+                        $$
+                        language sql volatile;
+                    */
+                    const { error: rpcError } = await supabaseClient
+                        .rpc('increment_points', {
+                            user_id: referrerId,
+                            points_to_add: REFERRAL_BONUS_POINTS
+                        });
+                    if (rpcError) throw rpcError;
+                    
+                    // 3. Grant initial bonus to the referred user (once)
+                    if (!userData.hasReceivedInitialBonus) {
+                        const { error: referredError } = await supabaseClient
+                            .from('profiles')
+                            .update({
+                                kkoinPoints: (userData.kkoinPoints || 0) + REFERRAL_INITIAL_BONUS_POINTS,
+                                hasReceivedInitialBonus: true
+                            })
+                            .eq('id', referredId);
+                        if (referredError) throw referredError;
                     }
 
                     showStatus(`Referral successful! You and user ${referrerId} received a bonus.`, 'success');
@@ -873,13 +927,11 @@
                     referrerInfoEl.classList.remove('hidden');
                     referrerIdDisplayEl.textContent = userData.referrerId;
                     
-                    // Track referral in analytics
                     if (TelemetreePixel) {
                         TelemetreePixel.track("referralCompleted", {
                             referrerId: referrerId
                         });
                     }
-
                 }
             } catch (error) {
                 console.error("Error processing referral event:", error);
@@ -940,8 +992,9 @@
                 return;
             }
             
-            const now = Date.now();
-            const timeSinceLastWatch = now - userData.lastAdWatch;
+            const now = new Date();
+            const lastAdTime = new Date(userData.lastAdWatch || 0);
+            const timeSinceLastWatch = now.getTime() - lastAdTime.getTime();
 
             if (timeSinceLastWatch < AD_WATCH_COOLDOWN_MS) {
                 watchAdBtn.disabled = true;
@@ -952,8 +1005,9 @@
                 adCooldownEl.textContent = `Next ad in: ${remainingTime}s`;
 
                 const updateTimer = () => {
-                    const now = Date.now();
-                    const timeSinceLastWatch = now - userData.lastAdWatch;
+                    const now = new Date();
+                    const lastAdTime = new Date(userData.lastAdWatch || 0);
+                    const timeSinceLastWatch = now.getTime() - lastAdTime.getTime();
                     const remaining = AD_WATCH_COOLDOWN_MS - timeSinceLastWatch;
                     
                     if (remaining <= 0) {
@@ -988,8 +1042,7 @@
             if (networkConfig.name === 'Telega.io') {
                  return { points: 0, network: networkConfig.name, isRewarded: false };
             }
-            
-            // FIX: Check for Monetag non-rewarded format using the correct index
+            // Check for Monetag non-rewarded format
             const monetagConfigIndex = (userData.totalAdsWatched) % MONETAG_CONFIGS.length;
             const monetagConfig = MONETAG_CONFIGS[monetagConfigIndex];
             if (networkConfig.name === 'Monetag' && monetagConfig.type === 'non-rewarded') {
@@ -1063,9 +1116,6 @@
                      return reject(e);
                 }
                 
-                // --- NEW: REWARD IMMEDIATELY ---
-                // We show the ad, and immediately reward the user
-                // We still *listen* for the callbacks to track analytics
                 AdsgramController.showRewardedAd()
                     .then(() => {
                         console.log("Adsgram ad confirmed complete.");
@@ -1075,10 +1125,8 @@
                     })
                     .catch(e => {
                         console.warn(`Adsgram ad callback error: ${e.message}`);
-                        // We don't reject here, because the user was already rewarded
                     });
                 
-                // Reward user immediately
                 resolve(adResult);
             });
         }
@@ -1087,7 +1135,6 @@
             return new Promise((resolve, reject) => {
                 const zoneId = MONETAG_CONFIGS[0].id; 
                 const showAdFunction = window[`show_${zoneId}`];
-                // Select which Monetag format to show based on the total ad count
                 const currentConfigIndex = userData.totalAdsWatched % MONETAG_CONFIGS.length;
                 const currentConfig = MONETAG_CONFIGS[currentConfigIndex];
 
@@ -1098,17 +1145,14 @@
                 let adPromise;
                 
                 try {
-                    // We only care about the format, the adResult (points) is passed through
                     if (currentConfig.format === 'interstitial') {
                         adPromise = showAdFunction();
                     } else if (currentConfig.format === 'pop') {
                         adPromise = showAdFunction('pop');
                     } else {
-                        // This case should be filtered by calculateAdPoints, but as a fallback:
                         return reject(new Error("Unknown Monetag format."));
                     }
                     
-                    // --- NEW: REWARD IMMEDIATELY ---
                     adPromise.then(() => {
                         console.log("Monetag ad confirmed complete.");
                         if (TelemetreePixel) {
@@ -1118,7 +1162,6 @@
                          console.warn(`Monetag ad callback error: ${e.message}`);
                     });
                     
-                    // Reward user immediately (if rewarded type)
                     if (currentConfig.type === 'rewarded') {
                         resolve(adResult); // Success: Ad watched
                     } else {
@@ -1185,11 +1228,8 @@
                 TelemetreePixel.track("watchAdClicked");
             }
 
-            // --- NEW FIXED SEQUENCE ---
-            // 1. Get the next network in the sequence
             const networkIndex = userData.totalAdsWatched % AD_NETWORK_CONFIGS.length;
             
-            // 2. Create the *full waterfall* starting from the sequenced network
             const networkWaterfallOrder = [];
             for (let i = 0; i < AD_NETWORK_CONFIGS.length; i++) {
                 networkWaterfallOrder.push(AD_NETWORK_CONFIGS[(networkIndex + i) % AD_NETWORK_CONFIGS.length]);
@@ -1199,12 +1239,8 @@
 
             let finalAdResult = null;
             let adShowed = false;
-            let firstAdTried = true;
 
             for (const currentNetwork of networkWaterfallOrder) {
-                // 3. Calculate points *for the specific network* we are trying
-                // Only calculate points if it's the *first* ad in the sequence, or if it's not.
-                // Re-calculate points for *each* network in the waterfall
                 const adResult = calculateAdPoints(currentNetwork);
 
                 showAdModal(currentNetwork.name);
@@ -1218,7 +1254,7 @@
                     const timeout = currentNetwork.timeout;
                     
                     const result = await Promise.race([
-                        currentNetwork.loader(adResult), // Pass the correct adResult
+                        currentNetwork.loader(adResult), 
                         new Promise((_, reject) => 
                             setTimeout(() => reject(new Error('Ad network timed out')), timeout)
                         )
@@ -1226,15 +1262,20 @@
                     
                     adShowed = true;
                     if (result) {
-                        // Rewarded ad was successful
                         finalAdResult = result;
                     } else {
-                        // Non-rewarded ad was successful
                         console.log(`${currentNetwork.name} was non-rewarded. Skipping reward.`);
-                        await updateDoc(getUserDocRef(userId), { 
-                            lastAdWatch: Date.now(),
-                            totalAdsWatched: userData.totalAdsWatched + 1 
-                        });
+                        // This is a non-rewarded ad. We must increment the ad counter
+                        // and set the cooldown, but award no points.
+                        const { error } = await supabaseClient
+                            .from('profiles')
+                            .update({
+                                lastAdWatch: new Date().toISOString(),
+                                totalAdsWatched: userData.totalAdsWatched + 1
+                            })
+                            .eq('id', userId);
+                        if (error) throw error;
+                            
                         if (TelemetreePixel) {
                             TelemetreePixel.track("adViewed", {
                                 network: currentNetwork.name,
@@ -1243,28 +1284,22 @@
                             });
                         }
                     }
-                    // An ad (rewarded or not) was shown, so we stop the waterfall.
                     break; 
 
                 } catch (error) {
                     adLoadFailed(currentNetwork.name, error.message);
-                    // Ad failed, loop will continue to the next network
                 }
             }
             
-            // Loop finished. Check results.
             if (finalAdResult) {
-                // A rewarded ad was successful
                 await finishAdWatch(finalAdResult);
             } else if (adShowed) {
-                // A non-rewarded ad was successful
                 hideAdModal();
                 updateAdButtonState(); // Start cooldown
             } else {
-                // All networks in the waterfall failed
                 showStatus("All ad networks are busy. Please try again in a moment.", 'error');
                 hideAdModal();
-                watchAdBtn.disabled = false; // Manually re-enable button
+                watchAdBtn.disabled = false; 
                 adMessageEl.textContent = "Click below to watch an ad.";
                 adCooldownEl.classList.add('hidden');
                 if (WebApp) WebApp.HapticFeedback.notificationOccurred('error');
@@ -1278,19 +1313,20 @@
             hideAdModal();
             if (WebApp) WebApp.HapticFeedback.notificationOccurred('success');
 
-            // All rewards are now direct credit from the user's perspective
             let creditMessage = `${adResult.network} (Credit Applied)`;
 
             try {
-                const userDocRef = getUserDocRef(userId);
-                
                 // We increment the ad count and points immediately
-                await updateDoc(userDocRef, {
-                    kkoinPoints: userData.kkoinPoints + pointsEarned,
-                    lastAdWatch: Date.now(),
-                    totalAdsWatched: userData.totalAdsWatched + 1
-                    // We can add a field here for "unconfirmedPoints" if needed
-                });
+                const { error } = await supabaseClient
+                    .from('profiles')
+                    .update({
+                        kkoinPoints: userData.kkoinPoints + pointsEarned,
+                        lastAdWatch: new Date().toISOString(),
+                        totalAdsWatched: userData.totalAdsWatched + 1
+                    })
+                    .eq('id', userId);
+                
+                if (error) throw error;
                 
                 const statusType = 'success';
                 showStatus(`You earned ${pointsEarned} Kkoin from ${adResult.network}.`, statusType);
@@ -1321,10 +1357,12 @@
         
         async function saveWalletAddress(wallet) {
             try {
-                const userDocRef = getUserDocRef(userId);
-                await updateDoc(userDocRef, {
-                    walletAddress: wallet
-                });
+                const { error } = await supabaseClient
+                    .from('profiles')
+                    .update({ walletAddress: wallet })
+                    .eq('id', userId);
+                if (error) throw error;
+                
                 userData.walletAddress = wallet;
                 updateDashboard(); // Update button state
             } catch (error) {
@@ -1378,8 +1416,6 @@
 
             const wallet = modalTargetWalletEl.textContent;
             
-            // NOTE: This is where you would add the server-side check for unverified postback points
-            // For now, the client just checks its own numbers
             if (userData.kkoinPoints < MIN_CONVERSION_POINTS || userData.totalReferrals < MIN_REFERRALS_FOR_WITHDRAWAL || !/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(wallet)) {
                 walletErrorEl.textContent = "Withdrawal failed: Minimum requirements not met.";
                 walletErrorEl.classList.remove('hidden');
@@ -1390,12 +1426,18 @@
 
             try {
                 const pointsToDeduct = MIN_CONVERSION_POINTS;
-                const userDocRef = getUserDocRef(userId);
-
-                await updateDoc(userDocRef, {
-                    kkoinPoints: userData.kkoinPoints - pointsToDeduct,
-                    walletAddress: wallet
-                });
+                
+                // You would call a Supabase Edge Function here to verify rewards before deducting
+                
+                const { error } = await supabaseClient
+                    .from('profiles')
+                    .update({
+                        kkoinPoints: userData.kkoinPoints - pointsToDeduct,
+                        walletAddress: wallet
+                    })
+                    .eq('id', userId);
+                
+                if (error) throw error;
                 
                 closeWithdrawalModal();
                 showStatus(`Withdrawal request for $10.00 USDT submitted to ${wallet}. Processing may take 24-48 hours.`, 'success');
@@ -1466,9 +1508,6 @@
                 navigateTo(e.currentTarget.getAttribute('data-page'));
             });
         });
-
-        // FIX: Ensure watchAdBtn is only assigned *after* DOM is loaded
-        // This is handled by moving all listeners into window.onload
         
         usdtTrc20PageInput.addEventListener('input', () => {
             const wallet = usdtTrc20PageInput.value.trim();
@@ -1536,10 +1575,8 @@
 
         // Initialize App on Window Load
         window.onload = () => {
-            // FIX: Add click listener for watchAdBtn *after* window.onload
-            // This ensures the button exists before we add a listener.
             document.getElementById('watch-ad-btn').addEventListener('click', startAdSequence);
-            initFirebase();
+            mainAppLogic(); // Start the main app logic (which replaces initFirebase)
         };
     </script>
 
