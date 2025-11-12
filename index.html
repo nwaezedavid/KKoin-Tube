@@ -8,8 +8,8 @@
     <!-- 1. MANDATORY: Load the Telegram Web App Script -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
-    <!-- 2. NEW: Supabase SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- 2. Supabase SDK (REMOVED from <head>, now imported in the module script) -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> -->
 
     <!-- 3. Ad Network SDKs -->
     <!-- RichAds SDK (Network C) -->
@@ -355,8 +355,8 @@
     <!-- Supabase Imports (NEW) -->
     <script type="module">
         // All JavaScript logic will now be in this single module script
-        // FIX: Get createClient from the global `window.supabase` object
-        const { createClient } = window.supabase; 
+        // FIX: Import createClient directly from the Supabase ESM CDN
+        import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
         
         // --- GLOBAL CONFIG & INITIALIZATION ---
         
@@ -368,6 +368,7 @@
         let supabaseClient = null;
         if (SUPABASE_URL && SUPABASE_ANON_KEY) {
              try {
+                // FIX: createClient is now a locally imported function
                 supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 console.log("Supabase client initialized.");
              } catch (e) {
